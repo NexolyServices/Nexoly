@@ -1,0 +1,20 @@
+# Dependencias
+node_modules/
+backend/vendor/
+frontend/node_modules/
+
+# Variables sensibles
+.env
+.env.local
+backend/.env
+frontend/.env
+
+# Construcción
+dist/
+frontend/dist/
+
+# Sistema
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
