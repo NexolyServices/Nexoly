@@ -1,23 +1,24 @@
 FROM php:8.2-fpm
 
-# Instalar extensiones y dependencias del sistema para PostgreSQL
+# 1. Instalar dependencias del sistema y el driver de PostgreSQL
 RUN apt-get update && apt-get install -y \
     libpq-dev \
     unzip \
     git \
-    && docker-php-ext-install pdo pdo_pgsql
+    && docker-php-ext-configure pgsql -with-pgsql=/usr/local/pgsql \
+    && docker-php-ext-install pdo pdo_pgsql pgsql
 
-# Instalar Composer de forma oficial
+# 2. Instalar Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Establecer el directorio de trabajo
 WORKDIR /var/www
 COPY . .
 
-# Instalar dependencias de PHP (Laravel)
+# 3. Instalar dependencias de Laravel
 RUN composer install --no-dev --optimize-autoloader
 
-# Comando Maestro: 
-# 1. Ejecuta las migraciones (crea las tablas) automáticamente.
-# 2. Inicia el servidor de Laravel.
+# 4. Dar permisos a la carpeta de almacenamiento (Importante para Laravel en Docker)
+RUN chmod -R 775 storage bootstrap/cache && chown -R www-data:www-data /var/www
+
+# 5. Ejecutar migraciones y encender
 CMD php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=10000
