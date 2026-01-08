@@ -91,9 +91,8 @@ const allServices = ref([])
 const userCoords = ref(null)
 const locationStatus = ref('Solicitando acceso GPS...')
 
-// --- LÓGICA DE DISTANCIA (Fórmula de Haversine) ---
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
-  const R = 6371 // Radio de la Tierra en km
+  const R = 6371 
   const dLat = (lat2 - lat1) * Math.PI / 180
   const dLon = (lon2 - lon1) * Math.PI / 180
   const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
@@ -108,8 +107,12 @@ const fetchServices = async () => {
     const apiUrl = import.meta.env.VITE_API_URL || 'https://nexoly.onrender.com';
     const response = await axios.get(`${apiUrl}/api/services`);
     
-    // Validamos que los datos sean un array antes de asignarlos
-    allServices.value = Array.isArray(response.data) ? response.data : [];
+    // CORRECCIÓN: Si la API devuelve un objeto con paginación, extraemos el array de 'data'
+    if (response.data && response.data.data) {
+      allServices.value = response.data.data;
+    } else {
+      allServices.value = Array.isArray(response.data) ? response.data : [];
+    }
   } catch (error) {
     console.error("Error al cargar servicios:", error);
     allServices.value = [];
@@ -118,9 +121,7 @@ const fetchServices = async () => {
   }
 }
 
-// --- FILTRAR SERVICIOS POR CERCANÍA (CORREGIDO) ---
 const nearbyServices = computed(() => {
-  // Verificación de seguridad para evitar error .filter is not a function
   if (!userCoords.value || !Array.isArray(allServices.value)) return []
   
   return allServices.value

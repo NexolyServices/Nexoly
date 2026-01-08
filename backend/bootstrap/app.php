@@ -3,7 +3,6 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
-// Importa la clase de tu middleware aquí arriba
 use App\Http\Middleware\IsAdmin; 
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -14,7 +13,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        // AQUÍ ES DONDE REGISTRAS EL ALIAS
+        // 1. Configuramos la confianza en el Proxy para HTTPS en la nube
+        $middleware->trustProxies(at: '*');
+
+        // 2. Registramos tus alias existentes
         $middleware->alias([
             'is_admin' => IsAdmin::class
         ]);
