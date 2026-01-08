@@ -107,7 +107,7 @@ const fetchServices = async () => {
     const apiUrl = import.meta.env.VITE_API_URL || 'https://nexoly.onrender.com';
     const response = await axios.get(`${apiUrl}/api/services`);
     
-    // CORRECCIÓN: Si la API devuelve un objeto con paginación, extraemos el array de 'data'
+    // Extraemos el array de servicios considerando la paginación de Laravel
     if (response.data && response.data.data) {
       allServices.value = response.data.data;
     } else {
@@ -128,6 +128,8 @@ const nearbyServices = computed(() => {
     .filter(s => s.modality === 'onsite' && s.latitude && s.longitude)
     .map(s => ({
       ...s,
+      // PARCHE ANTIGUO HTTP: Forzamos HTTPS en la URL de la imagen si viene de la base de datos como HTTP
+      image_url: s.image_url ? s.image_url.replace('http://', 'https://') : null,
       distance: calculateDistance(
         userCoords.value.latitude, 
         userCoords.value.longitude, 
