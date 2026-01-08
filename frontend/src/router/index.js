@@ -109,28 +109,48 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('token')
   const userRaw = localStorage.getItem('user')
-  const user = userRaw ? JSON.parse(userRaw) : null
+  
+  let user = null
+  try {
+    user = userRaw ? JSON.parse(userRaw) : null
+  } catch (e) {
+    console.error("Error parsing user from localStorage", e)
+  }
 
   // 1. Proteger rutas que requieren autenticación
   if (to.meta.requiresAuth && !token) {
     return next({ name: 'Login', query: { redirect: to.fullPath } })
   }
 
+  // 2. 🚨 CONTROL DE FLUJO DE PERFIL (SOLUCIÓN AL BUCLE)
+  // Si el usuario tiene sesión pero le falta la ciudad, lo obligamos a ir a ubicación
+  const isProfileIncomplete = token && (!user?.city || user?.city === "");
+
+  if (isProfileIncomplete && to.name !== 'CompleteProfile') {
+    console.warn("📍 [Router] Perfil incompleto detectado. Redirigiendo a ubicación..."); // Aquí integramos tu mensaje de consola
+    return next({ name: 'CompleteProfile' });
+  }
+
+  // Si ya tiene perfil completo y trata de entrar a CompleteProfile, mándalo al Dashboard
+  if (!isProfileIncomplete && to.name === 'CompleteProfile') {
+    return next({ name: 'Dashboard' });
+  }
+
   const userRole = user?.role_id || user?.role
 
-  // 2. Proteger rutas que requieren rol de proveedor (ID 2)
+  // 3. Proteger rutas que requieren rol de proveedor (ID 2)
   if (to.meta.requiresProvider) {
-    const isProvider = userRole == 2 || userRole === 'provider'
+    const isProvider = String(userRole) === '2' || userRole === 'provider'
     if (!isProvider) {
-      return next({ name: token ? 'Dashboard' : 'Home' })
+      return next({ name: 'Dashboard' })
     }
   }
 
-  // 3. Proteger rutas que requieren rol de administrador (ID 3)
+  // 4. Proteger rutas que requieren rol de administrador (ID 3)
   if (to.meta.requiresAdmin) {
-    const isAdmin = userRole == 3 || userRole === 'admin'
+    const isAdmin = String(userRole) === '3' || userRole === 'admin'
     if (!isAdmin) {
-      return next({ name: token ? 'Dashboard' : 'Home' })
+      return next({ name: 'Dashboard' })
     }
   }
 
