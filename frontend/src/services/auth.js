@@ -1,7 +1,7 @@
 import api from './api';
 
 export const authService = {
-    // 1. LOGIN con Rastreo de Consola
+    // 1. LOGIN: Corregido para evitar errores de respuesta incompleta
     async login(credentials) {
         try {
             console.log("🚀 [Auth] Intentando login para:", credentials.email);
@@ -9,20 +9,25 @@ export const authService = {
             
             console.log("✅ [Auth] Respuesta completa del servidor:", response.data);
 
-            // Verificamos si la propiedad access_token existe en la respuesta
+            // Validamos que la respuesta contenga el access_token y los datos mínimos
             if (response.data && response.data.access_token) {
                 console.log("🔑 [Auth] Token detectado, procediendo a guardar...");
+                
                 this.setToken(response.data.access_token); 
-                localStorage.setItem('user', JSON.stringify(response.data.user));
+                localStorage.setItem('user', JSON.stringify(response.data.user || {}));
+                
                 console.log("💾 [Auth] Sesión almacenada correctamente.");
-                return response.data;
+                
+                // Retornamos la data completa para que el componente Login.vue vea el éxito
+                return response.data; 
             } else {
-                console.error("❌ [Auth] Error: El servidor no envió 'access_token'. Revisa la pestaña de Red.");
-                return response.data;
+                // Si llegamos aquí, el servidor respondió pero sin el token necesario
+                console.error("❌ [Auth] El servidor no envió 'access_token'.");
+                throw new Error("Respuesta del servidor incompleta o inválida");
             }
         } catch (error) {
-            console.error("🔥 [Auth] Error en la petición de login:", error.response?.data || error.message);
-            throw error;
+            console.error("🔥 [Auth] Error en el proceso de login:", error.message);
+            throw error; // Re-lanzamos el error para que Login.vue lo capture en su catch
         }
     },
 
@@ -34,7 +39,7 @@ export const authService = {
             
             if (response.data && response.data.access_token) {
                 this.setToken(response.data.access_token);
-                localStorage.setItem('user', JSON.stringify(response.data.user));
+                localStorage.setItem('user', JSON.stringify(response.data.user || {}));
                 console.log("💾 [Auth] Registro y login automático exitoso.");
             }
             return response.data;
@@ -50,7 +55,7 @@ export const authService = {
             console.log("🚪 [Auth] Cerrando sesión...");
             await api.post('/auth/logout');
         } catch (error) {
-            console.warn("⚠️ [Auth] El servidor no pudo invalidar el token, pero limpiaremos el local storage igual.");
+            console.warn("⚠️ [Auth] No se pudo invalidar en servidor, limpiando localmente.");
         } finally {
             this.removeToken(); 
             localStorage.removeItem('user');
@@ -64,7 +69,6 @@ export const authService = {
             console.log("🔄 [Auth] Actualizando perfil...");
             const response = await api.post('/user/update', formData);
             
-            // Si el servidor devuelve el usuario actualizado, lo refrescamos en LocalStorage
             if (response.data && (response.data.user || response.data.data)) {
                 const updatedUser = response.data.user || response.data.data;
                 localStorage.setItem('user', JSON.stringify(updatedUser));
