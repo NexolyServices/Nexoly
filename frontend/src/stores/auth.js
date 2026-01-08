@@ -23,9 +23,17 @@ export const useAuthStore = defineStore('auth', {
 
   getters: {
     isAuthenticated: (state) => !!state.token,
-    // Verifica si el rol es 2 (Proveedor/Vendedor)
-    isProvider: (state) => String(state.user?.role_id) === '2',
-    isAdmin: (state) => String(state.user?.role_id) === '3'
+    
+    // CORRECCIÓN: Búsqueda flexible de rol para evitar el 'undefined'
+    isProvider: (state) => {
+      const role = state.user?.role_id || state.user?.role;
+      return String(role) === '2';
+    },
+    
+    isAdmin: (state) => {
+      const role = state.user?.role_id || state.user?.role;
+      return String(role) === '3';
+    }
   },
 
   actions: {
@@ -34,22 +42,21 @@ export const useAuthStore = defineStore('auth', {
         console.log("📤 [Store Auth] Enviando datos de registro:", payload);
         const data = await authService.register(payload)
         
-        // Detectamos el token con los dos nombres posibles
+        // Detectamos el token con los nombres posibles
         const token = data.access_token || data.token
         
         if (data && token && data.user) {
-          // Lupa de depuración para ver el rol real que devuelve tu base de datos
-          console.log("🔍 [Store Auth] Usuario recibido del servidor:", data.user);
-          console.log("🆔 [Store Auth] ROL ASIGNADO:", data.user.role_id);
-
+          // Log para confirmar qué nombres de propiedades envía tu servidor realmente
+          console.log("🔍 [Store Auth] Datos del usuario recibidos:", data.user);
+          
           this.setToken(token)
           this.setUser(data.user)
           
-          console.log("✅ [Store Auth] Sesión de nuevo usuario iniciada correctamente.");
+          console.log("✅ [Store Auth] Sesión iniciada tras registro.");
         }
         return data
       } catch (error) {
-        console.error("🔥 [Store Auth] Error en acción de registro:", error);
+        console.error("🔥 [Store Auth] Error en registro:", error);
         throw error;
       }
     },
@@ -57,13 +64,13 @@ export const useAuthStore = defineStore('auth', {
     async login(credentials) {
       const data = await authService.login(credentials)
       
-      // El backend usa 'access_token' según las capturas de red
+      // Uso de access_token confirmado por capturas de red
       const token = data.access_token || data.token
 
       if (data && token && data.user) {
         this.setToken(token)
         this.setUser(data.user)
-        console.log("✅ [Store Auth] Login exitoso. Usuario:", data.user.name);
+        console.log("✅ [Store Auth] Login exitoso para:", data.user.name);
       } else {
         throw new Error("Respuesta del servidor incompleta: No se encontró access_token")
       }
@@ -79,6 +86,7 @@ export const useAuthStore = defineStore('auth', {
 
     setUser(user) {
       if (user && typeof user === 'object') {
+        // Guardamos el objeto completo para que los getters procesen el rol correctamente
         this.user = user
         localStorage.setItem('user', JSON.stringify(user))
       }
