@@ -1,14 +1,10 @@
 import axios from 'axios';
 
 const api = axios.create({
-    // baseURL: Prioridad a la variable de entorno de Vercel
-    baseURL: import.meta.env.VITE_API_URL 
-        ? `${import.meta.env.VITE_API_URL}/api` 
-        : 'https://nexoly.onrender.com/api', 
-    
-    // IMPORTANTE: Lo dejamos en false (o lo quitamos) para que el login no falle con CORS *
-    withCredentials: false, 
-
+    // baseURL corregida: Si estamos en la web (Vercel), priorizamos Render sobre localhost
+    baseURL: import.meta.env.VITE_API_URL
+        ? `${import.meta.env.VITE_API_URL}/api`
+        : 'https://nexoly.onrender.com/api',
     headers: {
         'X-Requested-With': 'XMLHttpRequest',
         'Accept': 'application/json',
@@ -29,7 +25,8 @@ api.interceptors.request.use(config => {
 // Interceptor de Respuestas: Manejo de errores global Y LIMPIEZA DE URLS
 api.interceptors.response.use(
     response => {
-        // PARCHE DEFINITIVO PARA MIXED CONTENT (Forzar HTTPS en Render)
+        // PARCHE DEFINITIVO PARA MIXED CONTENT
+        // Si la respuesta trae datos, forzamos que cualquier link de Render use HTTPS
         if (response.data) {
             let resString = JSON.stringify(response.data);
             if (resString.includes('http://nexoly.onrender.com')) {
@@ -42,21 +39,19 @@ api.interceptors.response.use(
     error => {
         const { response, config } = error;
         
-        // Limpieza de URLs en caso de error (validaciones)
+        // También aplicamos la limpieza en caso de que el error traiga URLs (como en validaciones)
         if (error.response && error.response.data) {
             let errString = JSON.stringify(error.response.data);
-            if (errString.includes('http://nexoly.onrender.com')) {
-                errString = errString.replaceAll('http://nexoly.onrender.com', 'https://nexoly.onrender.com');
-                error.response.data = JSON.parse(errString);
-            }
+            errString = errString.replaceAll('http://nexoly.onrender.com', 'https://nexoly.onrender.com');
+            error.response.data = JSON.parse(errString);
         }
 
+        // Evitar errores si config no existe
         if (!config) return Promise.reject(error);
 
         const isConversations = config.url ? config.url.includes('/conversations') : false;
         const isAuthPage = window.location.pathname === '/login';
 
-        // Manejo de sesión expirada
         if (response && response.status === 401) {
             if (isConversations || isAuthPage) {
                 console.warn('Sesión expirada en chats - Ignorado');
