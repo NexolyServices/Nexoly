@@ -18,7 +18,7 @@
             <div class="relative group/avatar">
               <div class="w-32 h-32 rounded-full overflow-hidden border-4 border-slate-800 shadow-[0_0_30px_rgba(79,70,229,0.2)] bg-slate-800 transition-transform duration-500 group-hover/avatar:scale-105">
                 <img v-if="previewUrl" :src="previewUrl" class="object-cover w-full h-full" />
-                <img v-else-if="user?.profile_image" :src="user.profile_image" class="object-cover w-full h-full" />
+                <img v-else-if="auth.user?.profile_image" :src="auth.user.profile_image" class="object-cover w-full h-full" />
                 <div v-else class="w-full h-full flex items-center justify-center bg-indigo-500/10 text-indigo-400 text-3xl font-black">
                   {{ name.charAt(0) }}
                 </div>
@@ -80,20 +80,28 @@
 </template>
 
 <script setup>
-import { ref, onUnmounted } from 'vue'
+import { ref, onUnmounted, onMounted } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { useUiStore } from '../stores/ui'
+import api from '../services/api' // Usamos nuestra instancia configurada
 
 const auth = useAuthStore()
 const ui = useUiStore()
-const user = auth.user
 
-const name = ref(user?.name || '')
-const email = ref(user?.email || '')
+const name = ref('')
+const email = ref('')
 const fileInput = ref(null)
 const file = ref(null)
 const previewUrl = ref(null)
 const loading = ref(false)
+
+// Cargamos datos al montar para evitar errores de reactividad
+onMounted(() => {
+  if (auth.user) {
+    name.value = auth.user.name || ''
+    email.value = auth.user.email || ''
+  }
+})
 
 function onFileChange(e) {
   const f = e.target.files[0]
@@ -118,14 +126,31 @@ async function onSubmit() {
     const fd = new FormData()
     fd.append('name', name.value)
     fd.append('email', email.value)
-    if (file.value) fd.append('profile_image', file.value)
+    
+    // Si hay una imagen nueva, la agregamos
+    if (file.value) {
+      fd.append('profile_image', file.value)
+    }
 
-    const res = await auth.updateProfile(fd)
-    // Asegurarse de actualizar el store con los nuevos datos
-    auth.setUser(res.user || res.data?.user || res)
+    // Usamos POST con el truco de _method PUT por si el servidor lo requiere
+    fd.append('_method', 'PUT')
+
+    // Petición directa a la API usando nuestra configuración de Render
+    const response = await api.post('/user/profile', fd, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+
+    // Actualizamos el store con los datos frescos del servidor
+    const updatedUser = response.data.user || response.data.data || response.data
+    auth.setUser(updatedUser)
+    
     ui.addSuccess('Perfil actualizado correctamente')
+    file.value = null // Limpiamos el archivo seleccionado
   } catch (err) {
-    ui.addError(err.response?.data?.message || 'Error al actualizar perfil')
+    console.error('Error de perfil:', err)
+    ui.addError(err.response?.data?.message || 'Error al actualizar perfil. Revisa la ruta en el backend.')
   } finally {
     loading.value = false
   }
