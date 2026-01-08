@@ -18,7 +18,7 @@
       <div v-if="step === 1" class="grid grid-cols-1 md:grid-cols-2 gap-6 animate-slide-in">
         <button @click="selectRole(1)" class="group bg-slate-900/40 backdrop-blur-xl border border-white/5 p-8 rounded-[2.5rem] text-left hover:border-indigo-500/50 transition-all">
           <div class="w-12 h-12 bg-indigo-500/10 rounded-xl flex items-center justify-center mb-4 text-indigo-400">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor font-bold"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
           </div>
           <h3 class="text-white font-black uppercase italic tracking-tight">Soy Cliente</h3>
           <p class="text-slate-400 text-xs mt-2">Busco contratar servicios y profesionales.</p>
@@ -26,7 +26,7 @@
 
         <button @click="selectRole(2)" class="group bg-slate-900/40 backdrop-blur-xl border border-white/5 p-8 rounded-[2.5rem] text-left hover:border-emerald-500/50 transition-all">
           <div class="w-12 h-12 bg-emerald-500/10 rounded-xl flex items-center justify-center mb-4 text-emerald-400">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor font-bold"><path d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
           </div>
           <h3 class="text-white font-black uppercase italic tracking-tight">Soy Proveedor</h3>
           <p class="text-slate-400 text-xs mt-2">Deseo ofrecer mis servicios a domicilio.</p>
@@ -54,19 +54,19 @@
             </div>
             <div>
               <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block px-1">Estado / Provincia</label>
-              <input v-model="form.state" type="text" placeholder="Ej: Jalisco"
+              <input v-model="form.state" type="text" placeholder="Ej: Jalisco" required
                 class="w-full bg-[#0f111a]/60 border border-white/5 text-white p-4 rounded-2xl focus:border-indigo-500 outline-none transition-all text-sm" />
             </div>
           </div>
 
           <div>
             <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block px-1">Ciudad</label>
-            <input v-model="form.city" type="text" placeholder="Tu ciudad actual"
+            <input v-model="form.city" type="text" placeholder="Tu ciudad actual" required
               class="w-full bg-[#0f111a]/60 border border-white/5 text-white p-4 rounded-2xl focus:border-indigo-500 outline-none transition-all text-sm" />
           </div>
 
-          <button type="submit" :disabled="loading" class="w-full bg-white text-black py-5 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-indigo-600 hover:text-white transition-all active:scale-95 disabled:opacity-50">
-            {{ loading ? 'Configurando...' : 'Finalizar Registro' }}
+          <button type="submit" :disabled="loading" class="w-full bg-white text-black py-5 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-indigo-600 hover:text-white transition-all active:scale-95 disabled:opacity-50 shadow-xl">
+            {{ loading ? 'Sincronizando con la nube...' : 'Finalizar Registro' }}
           </button>
         </form>
       </div>
@@ -103,34 +103,35 @@ const selectRole = (id) => {
 
 const finishSetup = async () => {
   if (!form.state || !form.city) {
-    ui.addError('Por favor completa tu ubicación')
+    ui.addError('La ubicación es obligatoria')
     return
   }
 
   loading.value = true
   try {
-    // CORRECCIÓN: Usamos la URL base configurada o la completa de Render + /api
-    // Si tienes baseURL en axios configurada en main.js, solo deja '/api/user/complete-profile'
-    const response = await axios.post('/user/complete-profile', form)
+    const token = localStorage.getItem('token');
     
-    // 1. Actualizar el Store de Pinia
-    auth.user = response.data.user
+    // Petición a Render con el token de seguridad
+    const response = await axios.post('/user/complete-profile', form, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
     
-    // 2. IMPORTANTE: Actualizar el localStorage para que el router guard vea el cambio
-    localStorage.setItem('user', JSON.stringify(response.data.user))
+    // ACTUALIZACIÓN DE DATOS (Soluciona el problema de "Perfil incompleto")
+    auth.user = { ...response.data.user };
+    localStorage.setItem('user', JSON.stringify(response.data.user));
     
-    ui.addSuccess('¡Perfil completado!')
+    ui.addSuccess('¡Perfil Nexoly Activado!');
     
-    // 3. Redirigir según el rol elegido
+    // Redirección profesional basada en rol
     if(form.role_id === 2) {
-        router.push('/dashboard') // Proveedores al panel de control
+        router.push('/dashboard');
     } else {
-        router.push('/services') // Clientes al catálogo
+        router.push('/services');
     }
 
   } catch (err) {
-    console.error("Error en complete-profile:", err.response?.data || err)
-    ui.addError(err.response?.data?.message || 'Error al guardar los datos')
+    console.error("Error al guardar:", err.response?.data || err);
+    ui.addError('Error de conexión con Render. Reintenta.');
   } finally {
     loading.value = false
   }
@@ -144,4 +145,10 @@ const finishSetup = async () => {
 }
 .animate-fade-in-up { animation: fadeInUp 0.6s ease-out forwards; }
 .animate-slide-in { animation: fadeInUp 0.4s ease-out forwards; }
+.animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 </style>
