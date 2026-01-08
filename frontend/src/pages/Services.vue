@@ -167,16 +167,17 @@
 <script setup>
 import { ref, onMounted, computed, reactive, watch } from 'vue'
 import { useServicesStore } from '../stores/services'
+import { useAuthStore } from '../stores/auth' // AÑADIDO: Store de autenticación
 import { useRouter } from 'vue-router'
-import { useUiStore } from '../stores/ui' // Importado para avisos
+import { useUiStore } from '../stores/ui'
 import ServiceCard from '../components/ServiceCard.vue'
 
 const store = useServicesStore()
+const auth = useAuthStore() // AÑADIDO: Definición de auth
 const ui = useUiStore()
 const router = useRouter()
 const isSearching = ref(false)
 
-// NUEVO: ESTADO GEOLOCALIZACIÓN
 const geoActive = ref(false)
 const userCoords = ref(null)
 
@@ -191,7 +192,6 @@ const categories = [
 const cardRefs = ref([])
 const mousePositions = reactive({})
 
-// NUEVO: CÁLCULO DE DISTANCIA
 const getDistance = (lat1, lon1, lat2, lon2) => {
   if (!lat1 || !lon1 || !lat2 || !lon2) return null
   const R = 6371 
@@ -203,7 +203,6 @@ const getDistance = (lat1, lon1, lat2, lon2) => {
   return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)))
 }
 
-// NUEVO: TOGGLE GPS
 const toggleGeoFilter = () => {
   if (!geoActive.value) {
     if (navigator.geolocation) {
@@ -240,23 +239,29 @@ const goToDetails = (id) => {
 }
 
 const goToCheckout = (id) => {
-  // 1. Buscamos el servicio en la lista para saber quién es el dueño
+  // Verificación de autenticación previa
+  if (!auth.isAuthenticated) {
+    ui.addError('Inicia sesión para contratar')
+    router.push({ name: 'Login' })
+    return
+  }
+
+  // 1. Buscamos el servicio para validar al dueño
   const service = store.items.find(s => s.id === id)
   
-  // 2. Si el servicio existe, verificamos que no sea del usuario actual
+  // 2. EL CANDADO: Evita que el vendedor se contrate a sí mismo
   if (service && auth.user && String(auth.user.id) === String(service.user_id)) {
     ui.addError('No puedes contratar tu propio servicio destacado')
     return
   }
 
-  // 3. Si todo está bien, redirigimos
+  // 3. Redirección al checkout corregida
   router.push({ name: 'Checkout', params: { id } })
 }
 
 const featuredServices = computed(() => store.items.slice(0, 3))
 const items = computed(() => store.items)
 
-// NUEVO: COMPUTED PARA ORDENAR POR DISTANCIA
 const sortedItems = computed(() => {
   const list = items.value.map(s => ({
     ...s,
@@ -287,7 +292,6 @@ watch(() => filters.value.category, () => applyFilters())
 </script>
 
 <style scoped>
-/* Estilos se mantienen idénticos */
 input::-webkit-outer-spin-button,
 input::-webkit-inner-spin-button {
   -webkit-appearance: none;
