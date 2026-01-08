@@ -5,7 +5,7 @@ return [
 
     'allowed_methods' => ['*'],
 
-    // Usamos '*' para que no haya falla con ningún dominio (Vercel o Local)
+    // Al usar '*' permitimos cualquier dominio (Vercel, Localhost, etc.)
     'allowed_origins' => ['*'],
 
     'allowed_origins_patterns' => [],
@@ -16,6 +16,6 @@ return [
 
     'max_age' => 0,
 
-    // IMPORTANTE: Debe ser false para que el '*' de arriba funcione sin errores
+    // IMPORTANTE: Debe ser false para ser compatible con el '*' de arriba
     'supports_credentials' => false,
 ];
