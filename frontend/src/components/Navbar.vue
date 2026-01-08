@@ -9,7 +9,6 @@
     </router-link>
 
     <div class="flex flex-col items-center gap-4 mt-8 p-3 rounded-full bg-slate-900/40 backdrop-blur-md border border-white/5 shadow-2xl">
-      
       <a href="https://wa.me/521234567890?text=Hola!%20Vengo%20desde%20Nexoly%20y%20necesito%20ayuda." 
          target="_blank" 
          rel="noopener noreferrer"
@@ -90,8 +89,16 @@
               <span v-if="cartCount" class="absolute -top-1 -right-1 bg-indigo-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full border border-slate-900">{{ cartCount }}</span>
             </router-link>
             
-            <router-link to="/profile" class="w-8 h-8 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center text-[10px] font-black text-indigo-400 hover:border-indigo-500 transition-all">
-              {{ auth.user?.name?.charAt(0).toUpperCase() }}
+            <router-link to="/profile" class="w-8 h-8 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center overflow-hidden hover:border-indigo-500 transition-all">
+              <img 
+                v-if="auth.user?.image_url" 
+                :src="auth.user.image_url" 
+                class="w-full h-full object-cover"
+                alt="Perfil"
+              />
+              <span v-else class="text-[10px] font-black text-indigo-400">
+                {{ auth.user?.name?.charAt(0).toUpperCase() }}
+              </span>
             </router-link>
 
             <button @click="doLogout" class="text-[9px] uppercase font-black px-4 py-1.5 rounded-full bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all">
@@ -141,7 +148,6 @@ const cartCount = computed(() => cart.count)
 </script>
 
 <style scoped>
-/* Estilos adicionales para los links activos */
 .router-link-active:not(.group) {
   color: white !important;
 }
