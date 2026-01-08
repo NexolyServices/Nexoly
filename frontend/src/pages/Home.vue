@@ -108,12 +108,14 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
 
 const fetchServices = async () => {
   try {
-    const response = await axios.get('http://localhost:8000/api/services')
-    allServices.value = response.data
+    // Usamos la variable de entorno, si no existe, usamos la de Render por defecto
+    const apiUrl = import.meta.env.VITE_API_URL || 'https://nexoly-backend.onrender.com';
+    const response = await axios.get(`${apiUrl}/api/services`);
+    allServices.value = response.data;
   } catch (error) {
-    console.error("Error al cargar servicios", error)
+    console.error("Error al cargar servicios", error);
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
