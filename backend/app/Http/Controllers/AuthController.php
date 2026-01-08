@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Google_Client; // Importamos la librería de Google
+use Google_Client; 
 
 class AuthController extends Controller
 {
@@ -19,40 +19,34 @@ class AuthController extends Controller
     {
         $token = $request->input('token');
         
-        // 1. Configurar el cliente de Google
         $client = new Google_Client(['client_id' => env('VITE_GOOGLE_CLIENT_ID')]); 
         
-        // 2. Verificar que el token sea auténtico
         $payload = $client->verifyIdToken($token);
         
         if (!$payload) {
             return response()->json(['message' => 'Token de Google inválido'], 401);
         }
 
-        // 3. Extraer datos del payload de Google
         $email = $payload['email'];
         $name = $payload['name'];
         $google_id = $payload['sub'];
         $picture = $payload['picture'] ?? null;
 
-        // 4. Buscar al usuario o crearlo (Upsert)
         $user = User::where('email', $email)->first();
 
         if (!$user) {
-            // Si el usuario no existe, lo registramos
             $user = User::create([
                 'name' => $name,
                 'email' => $email,
-                'password' => Hash::make(Str::random(24)), // Password aleatorio por seguridad
+                'password' => Hash::make(Str::random(24)), 
                 'profile_image' => $picture,
-                'role_id' => 1, // Por defecto como Cliente (puedes ajustarlo)
+                'role_id' => 1, 
             ]);
             $isNewUser = true;
         } else {
             $isNewUser = false;
         }
 
-        // 5. Generar el token JWT de tu sistema para este usuario
         $token = auth('api')->login($user);
 
         return response()->json([
@@ -87,34 +81,66 @@ class AuthController extends Controller
      * Registro de Usuario
      */
     public function register(Request $request)
-{
-    $request->validate([
-        'name' => 'required|string|max:255',
-        // 'rfc' añade validación de formato de email estricto de Laravel
-        'email' => 'required|string|email:rfc,dns|max:255|unique:users',
-        'password' => 'required|string|min:6',
-    ], [
-        'email.email' => 'El formato del correo no es válido o el dominio no existe.',
-        'email.unique' => 'Este correo ya está registrado en nuestro sistema.'
-    ]);
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email:rfc,dns|max:255|unique:users',
+            'password' => 'required|string|min:6',
+        ], [
+            'email.email' => 'El formato del correo no es válido o el dominio no existe.',
+            'email.unique' => 'Este correo ya está registrado en nuestro sistema.'
+        ]);
 
-    $user = User::create([
-        'name' => $request->name,
-        'email' => $request->email,
-        'password' => Hash::make($request->password),
-        'role_id' => $request->role_id ?? 1,
-    ]);
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+            'role_id' => $request->role_id ?? 1,
+        ]);
 
-    $token = auth('api')->login($user);
+        $token = auth('api')->login($user);
 
-    return response()->json([
-        'access_token' => $token,
-        'user' => $user
-    ], 201);
-}
+        return response()->json([
+            'access_token' => $token,
+            'user' => $user
+        ], 201);
+    }
 
     /**
-     * Actualizar Perfil
+     * ✨ NUEVO MÉTODO: Completar Perfil tras registro
+     * Este método guarda la ubicación y el rol elegido.
+     */
+    public function completeProfile(Request $request)
+    {
+        $user = auth('api')->user();
+
+        if (!$user) {
+            return response()->json(['message' => 'Sesión expirada'], 401);
+        }
+
+        $request->validate([
+            'role_id' => 'required|integer',
+            'country' => 'required|string',
+            'state'   => 'required|string',
+            'city'    => 'required|string',
+        ]);
+
+        $user->update([
+            'role_id'       => $request->role_id,
+            'country'       => $request->country,
+            'state'         => $request->state,
+            'city'          => $request->city,
+            'business_name' => $request->business_name, // Puede ser null
+        ]);
+
+        return response()->json([
+            'message' => 'Perfil configurado con éxito',
+            'user' => $user
+        ]);
+    }
+
+    /**
+     * Actualizar Perfil (General)
      */
     public function updateProfile(Request $request)
     {

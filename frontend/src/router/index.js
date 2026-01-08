@@ -14,6 +14,12 @@ const routes = [
 
   // --- Rutas de Usuario (Requieren Auth) ---
   { 
+    path: '/complete-profile', 
+    name: 'CompleteProfile', 
+    component: () => import('../pages/CompleteProfile.vue'), 
+    meta: { requiresAuth: true } 
+  },
+  { 
     path: '/profile', 
     name: 'Profile', 
     component: () => import('../pages/Profile.vue'), 
@@ -44,7 +50,6 @@ const routes = [
     meta: { requiresAuth: true } 
   },
   
-  // CORRECCIÓN CLAVE: El :id? permite que la ruta acepte un ID o funcione sola
   { 
     path: '/checkout/:id?', 
     name: 'Checkout', 
@@ -111,13 +116,11 @@ router.beforeEach((to, from, next) => {
     return next({ name: 'Login', query: { redirect: to.fullPath } })
   }
 
-  // Obtener rol de forma segura para las validaciones
   const userRole = user?.role_id || user?.role
 
   // 2. Proteger rutas que requieren rol de proveedor (ID 2)
   if (to.meta.requiresProvider) {
     const isProvider = userRole == 2 || userRole === 'provider'
-    
     if (!isProvider) {
       return next({ name: token ? 'Dashboard' : 'Home' })
     }
@@ -126,7 +129,6 @@ router.beforeEach((to, from, next) => {
   // 3. Proteger rutas que requieren rol de administrador (ID 3)
   if (to.meta.requiresAdmin) {
     const isAdmin = userRole == 3 || userRole === 'admin'
-    
     if (!isAdmin) {
       return next({ name: token ? 'Dashboard' : 'Home' })
     }

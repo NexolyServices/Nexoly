@@ -11,7 +11,7 @@ use App\Http\Controllers\AdminController;
 // --- RUTAS PÚBLICAS ---
 Route::post('auth/login', [AuthController::class, 'login']);
 Route::post('auth/register', [AuthController::class, 'register']);
-Route::post('auth/google', [AuthController::class, 'googleLogin']); // ✨ RUTA AÑADIDA PARA GOOGLE
+Route::post('auth/google', [AuthController::class, 'googleLogin']); 
 Route::get('services', [ServiceController::class, 'index']);
 Route::get('services/{id}', [ServiceController::class, 'show']); 
 Route::get('categories', [ServiceController::class, 'categories']); 
@@ -23,8 +23,10 @@ Route::group(['middleware' => 'auth:api'], function () {
     Route::get('auth/me', [AuthController::class, 'me']);
     Route::post('auth/logout', [AuthController::class, 'logout']);
     
-    // RUTA AÑADIDA PARA PERFIL
+    // --- GESTIÓN DE PERFIL ---
     Route::post('user/update', [AuthController::class, 'updateProfile']); 
+    // ✨ NUEVA RUTA: Para completar datos tras registro con Google
+    Route::post('user/complete-profile', [AuthController::class, 'completeProfile']); 
 
     // --- GESTIÓN DE SERVICIOS ---
     Route::get('my-services', [ServiceController::class, 'userServices']); 
@@ -47,7 +49,7 @@ Route::group(['middleware' => 'auth:api'], function () {
 
     // --- MENSAJERÍA ---
     Route::get('conversations', [MessageController::class, 'getConversations']);
-    @Route::get('messages/{userId}', [MessageController::class, 'conversation']); 
+    Route::get('messages/{userId}', [MessageController::class, 'conversation']); 
     Route::post('messages', [MessageController::class, 'store']); 
 
     // --- PANEL ADMIN ---
@@ -56,6 +58,7 @@ Route::group(['middleware' => 'auth:api'], function () {
         Route::get('users', [AdminController::class, 'users']);
         Route::get('services', [AdminController::class, 'services']);
         Route::get('transactions', [AdminController::class, 'transactions']);
+        // Se corrigió un pequeño error de sintaxis en el archivo anterior (@Route)
         Route::patch('users/{id}', [AdminController::class, 'updateUser']);
         Route::patch('services/{id}', [AdminController::class, 'toggleService']);
     });
