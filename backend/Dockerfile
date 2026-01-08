@@ -1,8 +1,7 @@
 FROM php:8.2-fpm
 
-# Instalar Nginx y dependencias
+# Instalar dependencias esenciales
 RUN apt-get update && apt-get install -y \
-    nginx \
     libpq-dev \
     unzip \
     git \
@@ -17,17 +16,20 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www
 COPY . .
 
-# Configuración de Nginx
-COPY nginx.conf /etc/nginx/sites-available/default
-
+# Actualizar solo la librería necesaria
 RUN composer update google/apiclient --no-dev --optimize-autoloader --no-interaction
+
+# Permisos para Laravel
 RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
 RUN chmod -R 775 /var/www/storage /var/www/bootstrap/cache
 
 EXPOSE 10000
 
-# Arrancamos PHP-FPM y Nginx juntos
+# COMANDO FINAL CORREGIDO (Sin Nginx para evitar complicaciones):
+# 1. Limpia caché.
+# 2. Ejecuta migraciones.
+# 3. Inicia el servidor de PHP forzando a que todas las rutas pasen por Laravel.
 CMD php artisan cache:clear && \
     php artisan config:cache && \
     php artisan migrate --force && \
-    service nginx start && php-fpm
+    php -S 0.0.0.0:10000 -t public public/index.php
