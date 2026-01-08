@@ -1,33 +1,31 @@
 import api from './api';
 
 export const authService = {
-    // 1. LOGIN: Corregido para evitar errores de respuesta incompleta
+    // 1. LOGIN: Optimizado para evitar el error de "Respuesta incompleta"
     async login(credentials) {
         try {
             console.log("🚀 [Auth] Intentando login para:", credentials.email);
             const response = await api.post('/auth/login', credentials);
             
-            console.log("✅ [Auth] Respuesta completa del servidor:", response.data);
+            // Extraemos la data directamente del servidor
+            const data = response.data;
+            console.log("✅ [Auth] Respuesta recibida:", data);
 
-            // Validamos que la respuesta contenga el access_token y los datos mínimos
-            if (response.data && response.data.access_token) {
-                console.log("🔑 [Auth] Token detectado, procediendo a guardar...");
-                
-                this.setToken(response.data.access_token); 
-                localStorage.setItem('user', JSON.stringify(response.data.user || {}));
+            // Si el servidor envió el access_token, lo guardamos y retornamos éxito
+            if (data && data.access_token) {
+                this.setToken(data.access_token); 
+                localStorage.setItem('user', JSON.stringify(data.user || {}));
                 
                 console.log("💾 [Auth] Sesión almacenada correctamente.");
                 
-                // Retornamos la data completa para que el componente Login.vue vea el éxito
-                return response.data; 
+                // IMPORTANTE: Retornamos la data para que el componente haga el router.push
+                return data; 
             } else {
-                // Si llegamos aquí, el servidor respondió pero sin el token necesario
-                console.error("❌ [Auth] El servidor no envió 'access_token'.");
-                throw new Error("Respuesta del servidor incompleta o inválida");
+                throw new Error("El servidor no incluyó el token de acceso.");
             }
         } catch (error) {
-            console.error("🔥 [Auth] Error en el proceso de login:", error.message);
-            throw error; // Re-lanzamos el error para que Login.vue lo capture en su catch
+            console.error("🔥 [Auth] Error en login:", error.response?.data?.message || error.message);
+            throw error; 
         }
     },
 
@@ -55,7 +53,7 @@ export const authService = {
             console.log("🚪 [Auth] Cerrando sesión...");
             await api.post('/auth/logout');
         } catch (error) {
-            console.warn("⚠️ [Auth] No se pudo invalidar en servidor, limpiando localmente.");
+            console.warn("⚠️ [Auth] No se pudo invalidar en el servidor, limpiando localmente.");
         } finally {
             this.removeToken(); 
             localStorage.removeItem('user');
@@ -81,7 +79,7 @@ export const authService = {
         }
     },
 
-    // --- UTILIDADES DE TOKEN ---
+    // --- UTILIDADES DE ALMACENAMIENTO ---
     setToken(token) {
         localStorage.setItem('token', token);
     },
