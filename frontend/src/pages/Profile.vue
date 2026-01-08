@@ -14,15 +14,15 @@
           
           <div class="flex flex-col items-center mb-12">
             <div class="relative group">
-              <div class="w-32 h-32 rounded-full overflow-hidden border-4 border-slate-800 bg-slate-800">
+              <div class="w-32 h-32 rounded-full overflow-hidden border-4 border-slate-800 bg-slate-800 shadow-inner">
                 <img v-if="previewUrl" :src="previewUrl" class="object-cover w-full h-full" />
                 <img v-else-if="auth.user?.profile_image" :src="auth.user.profile_image" class="object-cover w-full h-full" />
                 <div v-else class="w-full h-full flex items-center justify-center bg-indigo-500/10 text-indigo-400 text-3xl font-black">
-                  {{ name ? name.charAt(0) : 'U' }}
+                  {{ name ? name.charAt(0).toUpperCase() : 'U' }}
                 </div>
               </div>
               
-              <label class="absolute bottom-1 right-1 bg-indigo-600 hover:bg-indigo-500 text-white p-2.5 rounded-full cursor-pointer shadow-lg border-2 border-[#0f111a]">
+              <label class="absolute bottom-1 right-1 bg-indigo-600 hover:bg-indigo-500 text-white p-2.5 rounded-full cursor-pointer shadow-lg border-2 border-[#0f111a] transition-transform active:scale-90">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                   <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
                 </svg>
@@ -35,16 +35,16 @@
           <div class="space-y-6">
             <div>
               <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block px-1">Nombre Público</label>
-              <input v-model="name" class="w-full bg-[#0f111a]/50 border border-white/5 text-white p-4 rounded-2xl focus:outline-none focus:border-indigo-500 font-bold" required />
+              <input v-model="name" class="w-full bg-[#0f111a]/50 border border-white/5 text-white p-4 rounded-2xl focus:outline-none focus:border-indigo-500 font-bold transition-colors" required />
             </div>
 
             <div>
               <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block px-1">Correo Electrónico</label>
-              <input v-model="email" type="email" class="w-full bg-[#0f111a]/50 border border-white/5 text-white p-4 rounded-2xl focus:outline-none focus:border-indigo-500 font-bold" required />
+              <input v-model="email" type="email" class="w-full bg-[#0f111a]/50 border border-white/5 text-white p-4 rounded-2xl focus:outline-none focus:border-indigo-500 font-bold transition-colors" required />
             </div>
 
             <div class="pt-6">
-              <button :disabled="loading" class="w-full bg-white text-black py-5 rounded-2xl font-black uppercase text-xs tracking-[0.2em] hover:bg-indigo-600 hover:text-white transition-all disabled:opacity-50">
+              <button :disabled="loading" class="w-full bg-white text-black py-5 rounded-2xl font-black uppercase text-xs tracking-[0.2em] hover:bg-indigo-600 hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                 <span v-if="loading">Sincronizando...</span>
                 <span v-else>Guardar Cambios</span>
               </button>
@@ -71,6 +71,7 @@ const file = ref(null)
 const previewUrl = ref(null)
 const loading = ref(false)
 
+// Sincronizar datos al cargar el componente
 onMounted(() => {
   if (auth.user) {
     name.value = auth.user.name || ''
@@ -81,10 +82,13 @@ onMounted(() => {
 function onFileChange(e) {
   const f = e.target.files[0]
   if (!f) return
+  
+  // Validación de tamaño (2MB)
   if (f.size > 2 * 1024 * 1024) {
-    ui.addError('El archivo supera los 2MB')
+    ui.addError('La imagen es muy pesada (máximo 2MB)')
     return
   }
+  
   file.value = f
   previewUrl.value = URL.createObjectURL(f)
 }
@@ -95,22 +99,29 @@ async function onSubmit() {
     const fd = new FormData()
     fd.append('name', name.value)
     fd.append('email', email.value)
+    
     if (file.value) {
       fd.append('profile_image', file.value)
     }
 
-    // Ruta recién creada en api.php
+    // Petición a la ruta unificada en api.php y AuthController.php
     const response = await api.post('/user/update', fd)
 
-    // Actualizamos el usuario en el estado global
-    const updatedUser = response.data.user || response.data.data || response.data
+    // Extraer usuario actualizado de la respuesta
+    const updatedUser = response.data.user || response.data
+    
+    // Actualizar estado global del usuario
     auth.setUser(updatedUser)
     
     ui.addSuccess('¡Perfil actualizado con éxito!')
-    file.value = null 
+    
+    // Limpiar selección de archivo tras éxito
+    file.value = null
+    previewUrl.value = null
   } catch (err) {
     console.error('Error al actualizar perfil:', err)
-    ui.addError(err.response?.data?.message || 'Error al conectar con el servidor')
+    const errorMsg = err.response?.data?.message || 'Error al conectar con el servidor'
+    ui.addError(errorMsg)
   } finally {
     loading.value = false
   }
