@@ -110,7 +110,9 @@ const finishSetup = async () => {
     const token = localStorage.getItem('token');
     
     // 1. Petición al backend
-    const response = await axios.post('/user/complete-profile', form, {
+    const response = await axios.post(
+        'https://nexoly.onrender.com/api/user/complete-profile',
+         form, {
       headers: { Authorization: `Bearer ${token}` }
     });
     
