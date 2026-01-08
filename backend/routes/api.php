@@ -11,6 +11,7 @@ use App\Http\Controllers\AdminController;
 // --- RUTAS PÚBLICAS ---
 Route::post('auth/login', [AuthController::class, 'login']);
 Route::post('auth/register', [AuthController::class, 'register']);
+Route::post('auth/google', [AuthController::class, 'googleLogin']); // ✨ RUTA AÑADIDA PARA GOOGLE
 Route::get('services', [ServiceController::class, 'index']);
 Route::get('services/{id}', [ServiceController::class, 'show']); 
 Route::get('categories', [ServiceController::class, 'categories']); 
@@ -46,7 +47,7 @@ Route::group(['middleware' => 'auth:api'], function () {
 
     // --- MENSAJERÍA ---
     Route::get('conversations', [MessageController::class, 'getConversations']);
-    Route::get('messages/{userId}', [MessageController::class, 'conversation']); 
+    @Route::get('messages/{userId}', [MessageController::class, 'conversation']); 
     Route::post('messages', [MessageController::class, 'store']); 
 
     // --- PANEL ADMIN ---

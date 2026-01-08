@@ -82,6 +82,26 @@
           </div>
         </form>
 
+        <div class="mt-8 flex flex-col items-center gap-4">
+          <div class="flex items-center w-full gap-4">
+            <div class="h-px bg-white/10 flex-1"></div>
+            <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">O continúa con</span>
+            <div class="h-px bg-white/10 flex-1"></div>
+          </div>
+          
+          <div class="w-full flex justify-center transform transition-transform hover:scale-[1.02] active:scale-[0.98]">
+            <GoogleSignInButton
+              @success="handleGoogleSuccess"
+              @error="handleGoogleError"
+              type="standard"
+              shape="pill"
+              theme="outline"
+              size="large"
+              text="signin_with"
+            />
+          </div>
+        </div>
+
         <div class="mt-8 text-center">
           <p class="text-slate-500 text-xs font-medium">
             ¿Aún no tienes cuenta? 
@@ -103,6 +123,7 @@ import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useUiStore } from '../stores/ui'
+import { GoogleSignInButton } from "vue3-google-signin" // Importar el componente de Google
 
 const email = ref('')
 const password = ref('')
@@ -115,35 +136,61 @@ const route = useRoute()
 const auth = useAuthStore()
 const ui = useUiStore()
 
+// --- LOGIN CLÁSICO ---
 const onSubmit = async () => {
   loading.value = true
   error.value = null
   
   try {
-    // 1. Ejecutamos el login
     await auth.login({ 
       email: email.value, 
       password: password.value 
     })
     
-    // 2. Si llegamos aquí, el login fue exitoso
     console.log("✅ Acceso autorizado. Redirigiendo a /services...");
     ui.addSuccess('Acceso autorizado')
     router.push('/services')
     
   } catch (err) {
-    console.error("🕵️ [Login] Capturado en catch:", err.message)
-    
-    // 3. Verificación de seguridad: si el token ya está guardado, ignoramos el error visual y entramos
-    if (localStorage.getItem('token')) {
-      console.log("⚠️ Se detectó un error menor de respuesta, pero el token ya existe. Redirigiendo igual...");
-      router.push('/services')
-    } else {
-      // Si realmente no hay token, mostramos el error al usuario
-      error.value = err.response?.data?.message || 'Acceso denegado: Verifica tus credenciales'
-    }
+    handleAuthError(err)
   } finally {
     loading.value = false
+  }
+}
+
+// --- LOGIN CON GOOGLE ---
+const handleGoogleSuccess = async (response) => {
+  loading.value = true
+  error.value = null
+  
+  try {
+    // Usamos el mismo store para procesar la credencial de Google
+    await auth.loginWithGoogle(response.credential)
+    
+    console.log("✅ Acceso con Google autorizado.");
+    ui.addSuccess('Sesión iniciada con Google')
+    router.push('/services')
+    
+  } catch (err) {
+    handleAuthError(err)
+  } finally {
+    loading.value = false
+  }
+}
+
+const handleGoogleError = () => {
+  error.value = 'Fallo en la conexión con Google'
+  ui.addError('Error de autenticación externa')
+}
+
+// Lógica de errores centralizada para mantener el código limpio
+const handleAuthError = (err) => {
+  console.error("🕵️ [Auth Error]:", err.message)
+  if (localStorage.getItem('token')) {
+    console.log("⚠️ Error menor, token detectado. Redirigiendo...");
+    router.push('/services')
+  } else {
+    error.value = err.response?.data?.message || 'Acceso denegado: Verifica tus datos'
   }
 }
 </script>

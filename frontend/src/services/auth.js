@@ -13,6 +13,19 @@ export const authService = {
         }
     },
 
+    // 1.1 GOOGLE LOGIN: Envía el token de Google al backend
+    async loginWithGoogle(credential) {
+        try {
+            console.log("🚀 [Auth] Validando credencial de Google en el servidor...");
+            // Enviamos el token en un objeto para que Laravel lo reciba correctamente
+            const response = await api.post('/auth/google', { token: credential });
+            return response.data;
+        } catch (error) {
+            console.error("🔥 [Auth] Error en Google Login:", error.response?.data?.message || error.message);
+            throw error;
+        }
+    },
+
     // 2. REGISTER: Solo retorna los datos para ser procesados por Pinia
     async register(userData) {
         try {
