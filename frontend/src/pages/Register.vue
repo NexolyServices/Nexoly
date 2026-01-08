@@ -106,6 +106,26 @@
           </div>
         </form>
 
+        <div class="mt-8 flex flex-col items-center gap-4">
+          <div class="flex items-center w-full gap-4">
+            <div class="h-px bg-white/10 flex-1"></div>
+            <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">O regístrate con</span>
+            <div class="h-px bg-white/10 flex-1"></div>
+          </div>
+          
+          <div class="w-full flex justify-center transform transition-transform hover:scale-[1.02] active:scale-[0.98]">
+            <GoogleSignInButton
+              @success="handleGoogleSuccess"
+              @error="handleGoogleError"
+              type="standard"
+              shape="pill"
+              theme="outline"
+              size="large"
+              text="signup_with"
+            />
+          </div>
+        </div>
+
         <div class="mt-8 text-center">
           <p class="text-slate-500 text-xs font-medium">
             ¿Ya tienes una cuenta? 
@@ -122,12 +142,13 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useUiStore } from '../stores/ui'
+import { GoogleSignInButton } from "vue3-google-signin" // IMPORTACIÓN DE GOOGLE
 
 const name = ref('')
 const email = ref('')
 const password = ref('')
 const passwordConfirm = ref('')
-const showPasswords = ref(false) // VARIABLE PARA EL OJO
+const showPasswords = ref(false)
 const role = ref('1')
 const businessName = ref('')
 const loading = ref(false)
@@ -141,6 +162,7 @@ const ui = useUiStore()
 function validate() {
   errors.value = {}
   if (!name.value.trim()) errors.value.name = 'Requerido'
+  // Validación básica frontend
   if (!email.value.includes('@')) errors.value.email = 'Email inválido'
   if (password.value.length < 6) errors.value.password = 'Mín. 6 caracteres'
   if (passwordConfirm.value !== password.value) errors.value.passwordConfirm = 'No coinciden'
@@ -164,13 +186,36 @@ const onSubmit = async () => {
 
     await auth.register(payload)
     ui.addSuccess('¡Bienvenido a Nexoly!')
-    router.push({ name: 'Dashboard' })
+    router.push('/services')
     
   } catch (err) {
     serverError.value = err.response?.data?.message || 'Error en el registro'
   } finally {
     loading.value = false
   }
+}
+
+// LOGICA PARA GOOGLE EN REGISTRO
+const handleGoogleSuccess = async (response) => {
+  loading.value = true
+  serverError.value = null
+  
+  try {
+    // loginWithGoogle maneja tanto login como registro automático en el backend
+    await auth.loginWithGoogle(response.credential)
+    ui.addSuccess('¡Cuenta vinculada con éxito!')
+    router.push('/services')
+    
+  } catch (err) {
+    serverError.value = 'Fallo en la vinculación con Google'
+  } finally {
+    loading.value = false
+  }
+}
+
+const handleGoogleError = () => {
+  serverError.value = 'Error de conexión con el servicio externo'
+  ui.addError('No se pudo conectar con Google')
 }
 </script>
 
