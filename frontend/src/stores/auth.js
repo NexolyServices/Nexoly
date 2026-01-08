@@ -23,17 +23,18 @@ export const useAuthStore = defineStore('auth', {
 
   getters: {
     isAuthenticated: (state) => !!state.token,
-    isProvider: (state) => String(state.user?.role_id) === '2'
-    ,
+    isProvider: (state) => String(state.user?.role_id) === '2',
     isAdmin: (state) => String(state.user?.role_id) === '3'
   },
 
   actions: {
-    // ESTA ES LA FUNCIÓN QUE FALTABA
     async register(payload) {
       const data = await authService.register(payload)
-      if (data && data.token && data.user) {
-        this.setToken(data.token)
+      // CAMBIO AQUÍ: Usamos access_token en lugar de token
+      const token = data.access_token || data.token
+      
+      if (data && token && data.user) {
+        this.setToken(token)
         this.setUser(data.user)
       }
       return data
@@ -41,11 +42,17 @@ export const useAuthStore = defineStore('auth', {
 
     async login(credentials) {
       const data = await authService.login(credentials)
-      if (data && data.token && data.user) {
-        this.setToken(data.token)
+      
+      // CAMBIO CRÍTICO: El backend envía 'access_token'
+      const token = data.access_token || data.token
+
+      if (data && token && data.user) {
+        this.setToken(token)
         this.setUser(data.user)
+        console.log("✅ Store actualizado con el nuevo token y usuario");
       } else {
-        throw new Error("Respuesta del servidor incompleta")
+        // Si el token es null o undefined, lanzamos el error que viste antes
+        throw new Error("Respuesta del servidor incompleta: No se encontró access_token")
       }
       return data
     },
@@ -75,7 +82,9 @@ export const useAuthStore = defineStore('auth', {
     logout() {
       this.token = null
       this.user = null
-      localStorage.clear()
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      // localStorage.clear() // Opcional, pero removeItem es más seguro para no borrar otras configs
       window.location.href = '/login'
     }
   }
