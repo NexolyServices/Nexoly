@@ -16,19 +16,21 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www
 COPY . .
 
-# CAMBIO SEGURO: Actualizamos solo la librería de Google para generar un nuevo lock file
-# Esto evita el error "Exit code: 4" sin riesgo de romper tus otras dependencias
+# Actualizamos solo la librería de Google para generar un nuevo lock file si es necesario
 RUN composer update google/apiclient --no-dev --optimize-autoloader --no-interaction
 
-# Asegurar permisos correctos ANTES de arrancar
+# Asegurar permisos correctos para que Laravel pueda escribir logs y cache
 RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
 RUN chmod -R 775 /var/www/storage /var/www/bootstrap/cache
 
-# Exponer el puerto que usa Render
+# Exponer el puerto que usa Render (10000 por defecto en sus planes)
 EXPOSE 10000
 
-# Comando optimizado
+# COMANDO CORREGIDO:
+# 1. Limpiamos y cacheamos la configuración.
+# 2. Corremos migraciones automáticamente.
+# 3. Lanzamos el servidor PHP apuntando a 'public' para que funcionen las rutas /api/
 CMD php artisan cache:clear && \
     php artisan config:cache && \
     php artisan migrate --force && \
-    php artisan serve --host=0.0.0.0 --port=10000
+    php -S 0.0.0.0:10000 -t public
