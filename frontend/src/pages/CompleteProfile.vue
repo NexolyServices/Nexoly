@@ -111,38 +111,38 @@ const finishSetup = async () => {
   try {
     const token = localStorage.getItem('token');
     
-    // 1. Petición al backend con refresh() ya integrado en PHP
+    // 1. Petición al backend
     const response = await axios.post('/user/complete-profile', form, {
       headers: { Authorization: `Bearer ${token}` }
     });
     
-    // 2. Verificación de que el backend devolvió el usuario completo
-    if (response.data.user && response.data.user.city) {
-      
-      // Actualizamos Pinia Store
-      auth.user = { ...response.data.user };
-      
-      // Forzamos la actualización de LocalStorage para el Router Guard
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+    // 2. Usamos la acción setUser del Store para asegurar consistencia
+    if (response.data.user) {
+      // 🚩 CAMBIO CLAVE: Usamos la acción del store que ya maneja LocalStorage y Pinia
+      auth.setUser(response.data.user);
       
       ui.addSuccess('¡Perfil activado correctamente!');
       
-      // 3. Pequeño delay para asegurar persistencia en el navegador
+      // 3. Redirección forzada
+      // Usamos un delay ligeramente mayor (500ms) para que el navegador 
+      // asiente los datos en el disco duro antes de cambiar de ruta
       setTimeout(() => {
-        if(form.role_id === 2) {
-            router.push('/dashboard');
-        } else {
-            router.push('/services');
-        }
-      }, 300);
+        const targetPath = String(form.role_id) === '2' ? '/dashboard' : '/services';
+        window.location.href = targetPath; // Usamos window.location para resetear el estado del Router
+      }, 500);
       
     } else {
       throw new Error('El servidor no devolvió los datos actualizados');
     }
 
   } catch (err) {
-    console.error("Error al guardar perfil:", err.response?.data || err);
-    ui.addError(err.response?.data?.message || 'Error de comunicación con el servidor');
+    // Si el error es de red (ERR_NAME_NOT_RESOLVED), damos un mensaje más claro
+    const errorMessage = err.code === 'ERR_NETWORK' 
+      ? 'Error de conexión: Revisa que el servidor de Render esté activo' 
+      : (err.response?.data?.message || 'Error de comunicación con el servidor');
+      
+    console.error("Error al guardar perfil:", err);
+    ui.addError(errorMessage);
   } finally {
     loading.value = false
   }
