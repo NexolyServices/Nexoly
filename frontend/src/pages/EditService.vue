@@ -119,13 +119,12 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useAuthStore } from '../stores/auth'
 import { useUiStore } from '../stores/ui'
-import axios from 'axios'
+// IMPORTANTE: Usamos nuestra instancia configurada, no axios pelado
+import api from '../services/api' 
 
 const route = useRoute()
 const router = useRouter()
-const authStore = useAuthStore()
 const ui = useUiStore()
 
 const loading = ref(false)
@@ -133,7 +132,6 @@ const fetching = ref(true)
 const selectedFile = ref(null)
 const imagePreview = ref(null)
 
-// --- MISMA LISTA DE CATEGORÍAS QUE EN CREATE ---
 const categories = [
   'Programación & Web',
   'Diseño & Creatividad',
@@ -158,7 +156,8 @@ const service = ref({
 
 onMounted(async () => {
   try {
-    const response = await axios.get(`http://localhost:8000/api/services/${route.params.id}`)
+    // CAMBIO: Usamos 'api' y la URL relativa
+    const response = await api.get(`/services/${route.params.id}`)
     const data = response.data.data || response.data
     service.value = data
   } catch (error) {
@@ -185,7 +184,6 @@ const handleSubmit = async () => {
   loading.value = true
   const data = new FormData()
   
-  // IMPORTANTE: Laravel requiere _method PUT para procesar archivos vía FormData en un "update"
   data.append('_method', 'PUT') 
   data.append('title', service.value.title)
   data.append('description', service.value.description)
@@ -198,12 +196,8 @@ const handleSubmit = async () => {
   }
 
   try {
-    await axios.post(`http://localhost:8000/api/services/${route.params.id}`, data, {
-      headers: {
-        'Authorization': `Bearer ${authStore.token}`,
-        'Content-Type': 'multipart/form-data'
-      }
-    })
+    // CAMBIO: Usamos 'api' y eliminamos headers manuales (api.js ya los tiene)
+    await api.post(`/services/${route.params.id}`, data)
 
     ui.addSuccess('Servicio actualizado con éxito')
     router.push('/my-services')
@@ -223,7 +217,6 @@ const handleSubmit = async () => {
 }
 .animate-fade-in-up { animation: fadeInUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 
-/* Ocultar flechas del input number */
 input::-webkit-outer-spin-button,
 input::-webkit-inner-spin-button {
   -webkit-appearance: none;
