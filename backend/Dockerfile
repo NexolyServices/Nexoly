@@ -23,13 +23,12 @@ RUN composer update google/apiclient --no-dev --optimize-autoloader --no-interac
 RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
 RUN chmod -R 775 /var/www/storage /var/www/bootstrap/cache
 
+# ... (deja todo lo de arriba como lo tienes hasta el EXPOSE 10000) ...
+
 EXPOSE 10000
 
-# COMANDO FINAL CORREGIDO (Sin Nginx para evitar complicaciones):
-# 1. Limpia caché.
-# 2. Ejecuta migraciones.
-# 3. Inicia el servidor de PHP forzando a que todas las rutas pasen por Laravel.
+# Comando final corregido y sin errores de texto:
 CMD php artisan cache:clear && \
     php artisan config:cache && \
     php artisan migrate --force && \
-    php -S 0.0.0.0:10000 index.php
+    php -S 0.0.0.0:10000 -t public public/index.php
