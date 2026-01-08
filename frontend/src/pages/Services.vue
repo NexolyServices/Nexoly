@@ -240,6 +240,16 @@ const goToDetails = (id) => {
 }
 
 const goToCheckout = (id) => {
+  // 1. Buscamos el servicio en la lista para saber quién es el dueño
+  const service = store.items.find(s => s.id === id)
+  
+  // 2. Si el servicio existe, verificamos que no sea del usuario actual
+  if (service && auth.user && String(auth.user.id) === String(service.user_id)) {
+    ui.addError('No puedes contratar tu propio servicio destacado')
+    return
+  }
+
+  // 3. Si todo está bien, redirigimos
   router.push({ name: 'Checkout', params: { id } })
 }
 
