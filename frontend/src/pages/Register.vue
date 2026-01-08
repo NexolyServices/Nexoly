@@ -22,7 +22,7 @@
           </div>
           <h2 class="text-white text-xl font-bold mb-3">Autenticación Verificada</h2>
           <p class="text-slate-400 text-sm leading-relaxed">
-            Para garantizar la integridad de nuestra comunidad, Nexoly utiliza cuentas verificadas de Google para el registro.
+            Nexoly utiliza Google para garantizar la seguridad. Tus datos de ubicación se solicitarán en el siguiente paso.
           </p>
         </div>
 
@@ -56,7 +56,7 @@
       </div>
 
       <p class="text-center text-[9px] text-slate-600 mt-8 uppercase tracking-[0.2em] px-10 leading-loose">
-        Al unirte, aceptas nuestros <a href="#" class="text-slate-400 underline">Términos</a> y <a href="#" class="text-slate-400 underline">Privacidad</a>. Nexoly nunca publicará nada sin tu permiso.
+        Al unirte, aceptas nuestros <a href="#" class="text-slate-400 underline">Términos</a> y <a href="#" class="text-slate-400 underline">Privacidad</a>.
       </p>
     </div>
   </div>
@@ -81,17 +81,22 @@ const handleGoogleSuccess = async (response) => {
   serverError.value = null
   
   try {
-    // El backend creará el usuario si no existe usando su info de Google
-    await auth.loginWithGoogle(response.credential)
+    // 1. Llamada al store para autenticar con Google
+    const res = await auth.loginWithGoogle(response.credential)
     
     ui.addSuccess('¡Identidad verificada!')
     
-    // IMPORTANTE: Redirigimos a la pantalla de completar perfil
-    router.push('/complete-profile')
+    // 2. Lógica de flujo inteligente:
+    // Si el backend marca 'is_new_user' o si el usuario no tiene rol asignado
+    if (res.is_new_user || !res.user.role_id) {
+      router.push('/complete-profile')
+    } else {
+      router.push('/services')
+    }
     
   } catch (err) {
-    serverError.value = 'No se pudo completar el registro'
-    ui.addError('Error al conectar con el servidor')
+    serverError.value = 'Error en el servidor'
+    ui.addError('No se pudo completar el registro')
   } finally {
     loading.value = false
   }
