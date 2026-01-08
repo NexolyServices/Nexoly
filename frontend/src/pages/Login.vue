@@ -13,105 +13,53 @@
         <p class="text-slate-500 font-bold uppercase tracking-[0.3em] text-[10px] mt-2">Acceso al Sistema</p>
       </div>
 
-      <div class="bg-slate-900/40 backdrop-blur-2xl border border-white/10 p-8 md:p-10 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-        <h2 class="text-xl font-bold text-white mb-8 text-center md:text-left">Bienvenido de vuelta</h2>
+      <div class="bg-slate-900/40 backdrop-blur-2xl border border-white/10 p-8 md:p-12 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] text-center">
+        <div class="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-white/10">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+        </div>
 
-        <form @submit.prevent="onSubmit" class="space-y-6">
-          <div>
-            <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block px-1">Correo Electrónico</label>
-            <div class="relative group">
-              <input 
-                v-model="email" 
-                type="email" 
-                class="w-full bg-[#0f111a]/60 border border-white/5 text-white p-4 rounded-2xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 transition-all font-medium placeholder:text-slate-700" 
-                placeholder="nombre@ejemplo.com"
-                required 
-              />
-            </div>
-          </div>
+        <h2 class="text-2xl font-black text-white mb-3">Bienvenido de vuelta</h2>
+        <p class="text-slate-400 text-sm mb-10 leading-relaxed px-4">
+          Para tu seguridad, Nexoly utiliza acceso biométrico y verificado a través de tu cuenta de Google.
+        </p>
 
-          <div>
-            <div class="flex justify-between items-center mb-2 px-1">
-              <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest block">Contraseña</label>
-              <a href="#" class="text-[9px] font-black text-indigo-400 uppercase tracking-widest hover:text-white transition-colors">¿Olvidaste tu clave?</a>
-            </div>
-            <div class="relative group">
-              <input 
-                v-model="password" 
-                :type="showPassword ? 'text' : 'password'" 
-                class="w-full bg-[#0f111a]/60 border border-white/5 text-white p-4 pr-12 rounded-2xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 transition-all font-medium placeholder:text-slate-700" 
-                placeholder="••••••••"
-                required 
-              />
-              <button 
-                type="button" 
-                @click="showPassword = !showPassword"
-                class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-indigo-400 transition-colors p-1"
-                title="Mostrar/Ocultar contraseña"
-              >
-                <svg v-if="!showPassword" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-                <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          <Transition name="fade">
-            <div v-if="error" class="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-xl text-xs font-bold text-center">
-              {{ error }}
-            </div>
-          </Transition>
-
-          <div class="pt-2">
-            <button 
-              type="submit" 
-              :disabled="loading"
-              class="w-full relative group overflow-hidden bg-white disabled:bg-slate-800 disabled:text-slate-600 text-black py-5 rounded-2xl font-black uppercase text-xs tracking-[0.2em] transition-all hover:bg-indigo-600 hover:text-white active:scale-95 shadow-xl"
-            >
-              <div v-if="loading" class="flex items-center justify-center gap-3">
-                <div class="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
-                Verificando...
-              </div>
-              <span v-else>Iniciar Sesión</span>
-              <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
-            </button>
-          </div>
-        </form>
-
-        <div class="mt-8 flex flex-col items-center gap-4">
-          <div class="flex items-center w-full gap-4">
-            <div class="h-px bg-white/10 flex-1"></div>
-            <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">O continúa con</span>
-            <div class="h-px bg-white/10 flex-1"></div>
-          </div>
-          
-          <div class="w-full flex justify-center transform transition-transform hover:scale-[1.02] active:scale-[0.98]">
+        <div class="space-y-6">
+          <div class="w-full flex justify-center transform transition-all hover:scale-105 active:scale-95">
             <GoogleSignInButton
               @success="handleGoogleSuccess"
               @error="handleGoogleError"
               type="standard"
               shape="pill"
-              theme="outline"
+              theme="filled_blue"
               size="large"
               text="signin_with"
             />
           </div>
+
+          <div v-if="loading" class="flex items-center justify-center gap-2 text-indigo-400 text-[10px] font-black uppercase tracking-widest animate-pulse">
+            <div class="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+            Sincronizando...
+          </div>
+
+          <Transition name="fade">
+            <div v-if="error" class="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-xl text-[10px] font-bold uppercase tracking-widest">
+              {{ error }}
+            </div>
+          </Transition>
         </div>
 
-        <div class="mt-8 text-center">
+        <div class="mt-12 pt-8 border-t border-white/5 text-center">
           <p class="text-slate-500 text-xs font-medium">
-            ¿Aún no tienes cuenta? 
-            <router-link to="/register" class="text-white font-black hover:text-indigo-400 transition-colors ml-1 uppercase tracking-tighter">Regístrate gratis</router-link>
+            ¿Nuevo en la comunidad? 
+            <router-link to="/register" class="text-white font-black hover:text-indigo-400 transition-colors ml-1 uppercase tracking-tighter">Crea tu cuenta</router-link>
           </p>
         </div>
       </div>
 
       <div class="mt-8 flex justify-center gap-6 opacity-40 grayscale hover:grayscale-0 transition-all duration-700">
-        <span class="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em]">Secure Access</span>
+        <span class="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em]">OAuth 2.0 Secure</span>
         <span class="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em]">Nexoly Cloud</span>
       </div>
     </div>
@@ -120,78 +68,48 @@
 
 <script setup>
 import { ref } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useUiStore } from '../stores/ui'
-import { GoogleSignInButton } from "vue3-google-signin" // Importar el componente de Google
+import { GoogleSignInButton } from "vue3-google-signin"
 
-const email = ref('')
-const password = ref('')
-const showPassword = ref(false)
 const loading = ref(false)
 const error = ref(null)
 
 const router = useRouter()
-const route = useRoute()
 const auth = useAuthStore()
 const ui = useUiStore()
 
-// --- LOGIN CLÁSICO ---
-const onSubmit = async () => {
-  loading.value = true
-  error.value = null
-  
-  try {
-    await auth.login({ 
-      email: email.value, 
-      password: password.value 
-    })
-    
-    console.log("✅ Acceso autorizado. Redirigiendo a /services...");
-    ui.addSuccess('Acceso autorizado')
-    router.push('/services')
-    
-  } catch (err) {
-    handleAuthError(err)
-  } finally {
-    loading.value = false
-  }
-}
-
-// --- LOGIN CON GOOGLE ---
 const handleGoogleSuccess = async (response) => {
   loading.value = true
   error.value = null
   
   try {
-    // Usamos el mismo store para procesar la credencial de Google
-    await auth.loginWithGoogle(response.credential)
+    const res = await auth.loginWithGoogle(response.credential)
     
-    console.log("✅ Acceso con Google autorizado.");
-    ui.addSuccess('Sesión iniciada con Google')
-    router.push('/services')
+    ui.addSuccess('Sesión iniciada correctamente')
+
+    // Lógica de flujo inteligente:
+    // Si al usuario le falta la ciudad (aunque ya exista), mándalo a completar perfil
+    if (!res.user.city || !res.user.role_id) {
+      console.log("📍 Perfil incompleto detectado. Redirigiendo a ubicación...");
+      router.push('/complete-profile')
+    } else {
+      console.log("✅ Perfil completo. Redirigiendo al catálogo...");
+      router.push('/services')
+    }
     
   } catch (err) {
-    handleAuthError(err)
+    error.value = 'No se pudo validar la cuenta'
+    ui.addError('Error de autenticación')
   } finally {
     loading.value = false
   }
 }
 
 const handleGoogleError = () => {
-  error.value = 'Fallo en la conexión con Google'
-  ui.addError('Error de autenticación externa')
-}
-
-// Lógica de errores centralizada para mantener el código limpio
-const handleAuthError = (err) => {
-  console.error("🕵️ [Auth Error]:", err.message)
-  if (localStorage.getItem('token')) {
-    console.log("⚠️ Error menor, token detectado. Redirigiendo...");
-    router.push('/services')
-  } else {
-    error.value = err.response?.data?.message || 'Acceso denegado: Verifica tus datos'
-  }
+  error.value = 'Conexión con Google cancelada'
+  ui.addError('Error al conectar con Google')
 }
 </script>
 
