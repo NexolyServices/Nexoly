@@ -83,13 +83,24 @@ export const useAuthStore = defineStore('auth', {
     // 🔥 ACCIÓN BLINDADA: Evita que el rol pase a 'undefined'
     setUser(user) {
       if (user && typeof user === 'object') {
-        // Preservamos el rol que ya tenemos si el nuevo objeto no lo trae
-        const currentRole = this.user?.role_id || this.user?.role;
-        const incomingRole = user.role_id || user.role;
+        // 1. Obtenemos el rol que ya tenemos guardado actualmente
+        const currentRole = String(this.user?.role_id || this.user?.role || '');
+        
+        // 2. Obtenemos el rol que intenta entrar
+        const incomingRole = String(user.role_id || user.role || '');
+
+        // 🛡️ EL CANDADO: Si ya somos Vendedores (2) o Admins (3), 
+        // y lo que viene es un rol de Cliente (1) o undefined, RECHAZAMOS el cambio de rol.
+        let roleToSave = incomingRole;
+        
+        if ((currentRole === '2' || currentRole === '3') && (incomingRole === '1' || incomingRole === '')) {
+          console.warn("⚠️ [Auth Store] Intento de degradación de rol bloqueado. Manteniendo Rol:", currentRole);
+          roleToSave = currentRole;
+        }
 
         const finalUser = {
           ...user,
-          role_id: incomingRole || currentRole
+          role_id: roleToSave
         };
 
         console.log("💾 [Store] Guardando usuario con Rol final:", finalUser.role_id);
@@ -98,7 +109,6 @@ export const useAuthStore = defineStore('auth', {
         localStorage.setItem('user', JSON.stringify(finalUser));
       }
     },
-
     async updateProfile(formData) {
       try {
         const res = await authService.updateProfile(formData)
