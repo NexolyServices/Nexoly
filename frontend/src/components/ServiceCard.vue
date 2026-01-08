@@ -134,14 +134,31 @@ function addToCart() {
 }
 
 async function contractNow() {
+  // 1. Verificación de Autenticación
   if (!auth.isAuthenticated) {
+    ui.addError('Debes iniciar sesión para contratar')
     router.push({ name: 'Login', query: { redirect: `/services/${props.service.id}` } })
     return
   }
+
+  // 2. Verificación de Dueño (No autodegradación)
   if (auth.user && String(auth.user.id) === String(props.service.user_id)) {
     ui.addError('No puedes contratar tu propio servicio')
     return
   }
+
+  // 3. REDIRECCIÓN AL CHECKOUT
+  // En lugar de crear el contrato aquí, mandamos al usuario a la pasarela de pago
+  console.log("💳 [Catalogo] Redirigiendo al checkout para el servicio:", props.service.id);
+  
+  router.push({
+    name: 'Checkout', // Asegúrate de que este sea el nombre de tu ruta en router/index.js
+    query: { 
+      serviceId: props.service.id,
+      price: props.service.price 
+    }
+  });
+}
 
   ui.setLoading && ui.setLoading(true)
   
