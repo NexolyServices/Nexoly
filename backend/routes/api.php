@@ -21,6 +21,9 @@ Route::group(['middleware' => 'auth:api'], function () {
     
     Route::get('auth/me', [AuthController::class, 'me']);
     Route::post('auth/logout', [AuthController::class, 'logout']);
+    
+    // RUTA AÑADIDA PARA PERFIL
+    Route::post('user/update', [AuthController::class, 'updateProfile']); 
 
     // --- GESTIÓN DE SERVICIOS ---
     Route::get('my-services', [ServiceController::class, 'userServices']); 
@@ -35,7 +38,6 @@ Route::group(['middleware' => 'auth:api'], function () {
     Route::get('my-contracts', [ContractController::class, 'myContracts']); 
     Route::get('seller/orders', [ContractController::class, 'sellerOrders']);
     
-    // Actualización de estados (Completar/Cancelar)
     Route::patch('contracts/{id}/status', [ContractController::class, 'updateStatus']);
     Route::patch('contracts/{id}/cancel', [ContractController::class, 'cancel']);
 

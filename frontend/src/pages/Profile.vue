@@ -18,7 +18,7 @@
                 <img v-if="previewUrl" :src="previewUrl" class="object-cover w-full h-full" />
                 <img v-else-if="auth.user?.profile_image" :src="auth.user.profile_image" class="object-cover w-full h-full" />
                 <div v-else class="w-full h-full flex items-center justify-center bg-indigo-500/10 text-indigo-400 text-3xl font-black">
-                  {{ name.charAt(0) }}
+                  {{ name ? name.charAt(0) : 'U' }}
                 </div>
               </div>
               
@@ -99,20 +99,18 @@ async function onSubmit() {
       fd.append('profile_image', file.value)
     }
 
-    // TRUCO LARAVEL: Usamos POST pero con _method PUT para que acepte la imagen
-    fd.append('_method', 'PUT')
+    // Ruta recién creada en api.php
+    const response = await api.post('/user/update', fd)
 
-    // INTENTA ESTA RUTA, es la más común en Laravel Sanctum para el usuario logueado
-    const response = await api.post('/user', fd)
-
+    // Actualizamos el usuario en el estado global
     const updatedUser = response.data.user || response.data.data || response.data
     auth.setUser(updatedUser)
     
-    ui.addSuccess('¡Perfil actualizado!')
+    ui.addSuccess('¡Perfil actualizado con éxito!')
     file.value = null 
   } catch (err) {
-    console.error('Error:', err)
-    ui.addError(err.response?.data?.message || 'Error al actualizar. Revisa la ruta /api/user')
+    console.error('Error al actualizar perfil:', err)
+    ui.addError(err.response?.data?.message || 'Error al conectar con el servidor')
   } finally {
     loading.value = false
   }
