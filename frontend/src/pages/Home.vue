@@ -8,10 +8,7 @@
           El Marketplace del Futuro
         </span>
         <h1 class="text-6xl md:text-8xl font-black tracking-tighter italic uppercase leading-none">
-          Nexoly <br />
-          <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-fuchsia-500 to-indigo-500">
-            Unlimited
-          </span>
+          Nexoly
         </h1>
         <p class="mt-6 text-slate-400 max-w-xl mx-auto font-medium text-lg leading-relaxed">
           Encuentra talento experto, servicios locales por GPS y soluciones digitales en un solo lugar.
@@ -108,20 +105,23 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
 
 const fetchServices = async () => {
   try {
-    // Usamos la variable de entorno, si no existe, usamos la de Render por defecto
-    const apiUrl = import.meta.env.VITE_API_URL || 'https://nexoly-backend.onrender.com';
+    const apiUrl = import.meta.env.VITE_API_URL || 'https://nexoly.onrender.com';
     const response = await axios.get(`${apiUrl}/api/services`);
-    allServices.value = response.data;
+    
+    // Validamos que los datos sean un array antes de asignarlos
+    allServices.value = Array.isArray(response.data) ? response.data : [];
   } catch (error) {
-    console.error("Error al cargar servicios", error);
+    console.error("Error al cargar servicios:", error);
+    allServices.value = [];
   } finally {
     loading.value = false;
   }
 }
 
-// --- FILTRAR SERVICIOS POR CERCANÍA ---
+// --- FILTRAR SERVICIOS POR CERCANÍA (CORREGIDO) ---
 const nearbyServices = computed(() => {
-  if (!userCoords.value) return []
+  // Verificación de seguridad para evitar error .filter is not a function
+  if (!userCoords.value || !Array.isArray(allServices.value)) return []
   
   return allServices.value
     .filter(s => s.modality === 'onsite' && s.latitude && s.longitude)
@@ -135,13 +135,12 @@ const nearbyServices = computed(() => {
       )
     }))
     .sort((a, b) => a.distance - b.distance)
-    .slice(0, 6) // Solo mostrar los 6 más cercanos
+    .slice(0, 6)
 })
 
 onMounted(() => {
   fetchServices()
   
-  // Obtener ubicación del usuario al entrar
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
@@ -168,7 +167,6 @@ onMounted(() => {
   animation: fadeInUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* Scrollbar personalizado para estética dark */
 ::-webkit-scrollbar { width: 8px; }
 ::-webkit-scrollbar-track { background: #0f111a; }
 ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
