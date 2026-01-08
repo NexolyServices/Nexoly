@@ -20,32 +20,47 @@ api.interceptors.request.use(config => {
     return Promise.reject(error);
 });
 
-// Interceptor de Respuestas: Manejo de errores global
+// Interceptor de Respuestas: Manejo de errores global Y LIMPIEZA DE URLS
 api.interceptors.response.use(
-    response => response,
+    response => {
+        // PARCHE DEFINITIVO PARA MIXED CONTENT
+        // Si la respuesta trae datos, forzamos que cualquier link de Render use HTTPS
+        if (response.data) {
+            let resString = JSON.stringify(response.data);
+            if (resString.includes('http://nexoly.onrender.com')) {
+                resString = resString.replaceAll('http://nexoly.onrender.com', 'https://nexoly.onrender.com');
+                response.data = JSON.parse(resString);
+            }
+        }
+        return response;
+    },
     error => {
         const { response, config } = error;
+        
+        // También aplicamos la limpieza en caso de que el error traiga URLs (como en validaciones)
+        if (error.response && error.response.data) {
+            let errString = JSON.stringify(error.response.data);
+            errString = errString.replaceAll('http://nexoly.onrender.com', 'https://nexoly.onrender.com');
+            error.response.data = JSON.parse(errString);
+        }
+
         const isConversations = config.url.includes('/conversations');
         const isAuthPage = window.location.pathname === '/login';
 
         if (response && response.status === 401) {
-            // Ignorar 401 en chats o login para evitar bucles de redirección
             if (isConversations || isAuthPage) {
                 console.warn('Sesión expirada en chats - Ignorado');
                 return Promise.resolve({ data: { data: [] } });
             }
 
-            // Logout automático para sesiones expiradas en otras secciones
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             
-            // Solo redirigir si no estamos ya en el login
             if (!isAuthPage) {
                 window.location.href = '/login';
             }
         }
 
-        // Manejo de error 404 (Servicio no encontrado en Checkout)
         if (response && response.status === 404 && config.url.includes('/services/')) {
             console.error('El servicio solicitado no existe en la DB');
         }
