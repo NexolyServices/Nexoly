@@ -85,21 +85,20 @@ const handleGoogleSuccess = async (response) => {
   error.value = null
   
   try {
-    const res = await auth.loginWithGoogle(response.credential)
+    // 1. Ejecutamos la lógica de autenticación del store
+    await auth.loginWithGoogle(response.credential)
     
     ui.addSuccess('Sesión iniciada correctamente')
 
-    // Lógica de flujo inteligente:
-    // Si al usuario le falta la ciudad (aunque ya exista), mándalo a completar perfil
-    if (!res.user.city || !res.user.role_id) {
-      console.log("📍 Perfil incompleto detectado. Redirigiendo a ubicación...");
-      router.push('/complete-profile')
-    } else {
-      console.log("✅ Perfil completo. Redirigiendo al catálogo...");
-      router.push('/services')
-    }
+    // 2. Lógica simplificada:
+    // Solo mandamos al usuario a '/services'. El Router Guard (index.js)
+    // se encargará de verificar si el perfil está completo y redirigir
+    // a /complete-profile si es necesario. Esto evita bucles de redirección.
+    console.log("✅ Login exitoso. Delegando control de flujo al Router...");
+    router.push('/services')
     
   } catch (err) {
+    console.error("Error en autenticación:", err)
     error.value = 'No se pudo validar la cuenta'
     ui.addError('Error de autenticación')
   } finally {

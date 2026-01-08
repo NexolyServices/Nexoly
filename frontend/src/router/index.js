@@ -120,38 +120,39 @@ router.beforeEach((to, from, next) => {
     return next({ name: 'Login', query: { redirect: to.fullPath } })
   }
 
-  // 2. 🚨 CONTROL DE FLUJO DE PERFIL MEJORADO
-  // Verificamos si realmente falta la ciudad (trim para evitar espacios vacíos)
+  // 2. 🚨 CONTROL DE FLUJO DE PERFIL (SOLUCIÓN DEFINITIVA)
+  // Verificamos ciudad para asegurar que el perfil esté completo
   const hasCity = user?.city && String(user.city).trim() !== "";
   const isProfileIncomplete = token && user && !hasCity;
 
-  // Si el perfil está incompleto y no estamos ya en la página de completar perfil, redirigimos
-  if (isProfileIncomplete && to.name !== 'CompleteProfile') {
-    console.warn("📍 [Router] Acceso denegado: Perfil sin ubicación.");
+  // Redirigir a CompleteProfile SOLO si el perfil está incompleto Y la ruta destino es protegida
+  if (
+    isProfileIncomplete && 
+    to.meta.requiresAuth && 
+    to.name !== 'CompleteProfile'
+  ) {
+    console.warn("📍 [Router] Perfil incompleto. Redirigiendo a completar ubicación...");
     return next({ name: 'CompleteProfile' });
   }
 
-  // Si el perfil ya tiene ciudad y el usuario intenta entrar a CompleteProfile, lo sacamos de ahí
+  // Si ya tiene ciudad y está logueado, prohibido volver a CompleteProfile
   if (token && hasCity && to.name === 'CompleteProfile') {
     return next({ name: 'Dashboard' });
   }
 
+  // 3. Verificación de Roles
   const userRole = user?.role_id || user?.role
 
-  // 3. Proteger rutas que requieren rol de proveedor (ID 2)
+  // Rol de Proveedor (ID 2)
   if (to.meta.requiresProvider) {
     const isProvider = String(userRole) === '2' || userRole === 'provider'
-    if (!isProvider) {
-      return next({ name: 'Dashboard' })
-    }
+    if (!isProvider) return next({ name: 'Dashboard' })
   }
 
-  // 4. Proteger rutas que requieren rol de administrador (ID 3)
+  // Rol de Administrador (ID 3)
   if (to.meta.requiresAdmin) {
     const isAdmin = String(userRole) === '3' || userRole === 'admin'
-    if (!isAdmin) {
-      return next({ name: 'Dashboard' })
-    }
+    if (!isAdmin) return next({ name: 'Dashboard' })
   }
 
   next()
