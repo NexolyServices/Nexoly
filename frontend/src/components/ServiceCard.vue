@@ -94,11 +94,13 @@ import { useCartStore } from '../stores/cart'
 import { useAuthStore } from '../stores/auth'
 import { useUiStore } from '../stores/ui'
 import { useRouter } from 'vue-router'
-import { servicesApi } from '../services/services'
 
 const props = defineProps({ 
   service: { type: Object, required: true } 
 })
+
+// Definimos los eventos para avisar al componente padre (Catálogo)
+const emit = defineEmits(['hire', 'view'])
 
 const cart = useCartStore()
 const auth = useAuthStore()
@@ -133,6 +135,7 @@ function addToCart() {
   ui.addSuccess('Añadido al carrito')
 }
 
+// FUNCIÓN CORREGIDA: Ahora redirige al Checkout en lugar de crear el contrato
 async function contractNow() {
   // 1. Verificación de Autenticación
   if (!auth.isAuthenticated) {
@@ -141,36 +144,20 @@ async function contractNow() {
     return
   }
 
-  // 2. Verificación de Dueño (No autodegradación)
+  // 2. Verificación de Dueño
   if (auth.user && String(auth.user.id) === String(props.service.user_id)) {
     ui.addError('No puedes contratar tu propio servicio')
     return
   }
 
-  // 3. REDIRECCIÓN AL CHECKOUT
-  // En lugar de crear el contrato aquí, mandamos al usuario a la pasarela de pago
-  console.log("💳 [Catalogo] Redirigiendo al checkout para el servicio:", props.service.id);
-  
-  router.push({
-    name: 'Checkout', // Asegúrate de que este sea el nombre de tu ruta en router/index.js
-    query: { 
-      serviceId: props.service.id,
-      price: props.service.price 
-    }
-  });
-}
+  // 3. Emitimos el evento al padre para mantener consistencia
+  emit('hire', props.service.id)
 
-  ui.setLoading && ui.setLoading(true)
-  
-  try {
-    // Esta llamada ahora usa automáticamente WorldTimeAPI gracias a nuestro cambio en services.js
-    await servicesApi.createContract(props.service.id, props.service.price)
-    ui.addSuccess('Contratado con éxito. El registro de tiempo ha iniciado.')
-  } catch (err) {
-    ui.addError(err.response?.data?.message || 'Error al procesar la contratación')
-  } finally {
-    ui.setLoading && ui.setLoading(false)
-  }
+  // 4. Redirección directa al Checkout (por seguridad)
+  router.push({
+    name: 'Checkout',
+    params: { id: props.service.id } // Usamos params según tu lógica de "servicios destacados"
+  });
 }
 </script>
 
