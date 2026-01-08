@@ -44,7 +44,7 @@
             </div>
 
             <div class="pt-6">
-              <button :disabled="loading" class="w-full bg-white text-black py-5 rounded-2xl font-black uppercase text-xs tracking-[0.2em] hover:bg-indigo-600 hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+              <button :disabled="loading" class="w-full bg-white text-black py-5 rounded-2xl font-black uppercase text-xs tracking-[0.2em] hover:bg-indigo-600 hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xl">
                 <span v-if="loading">Sincronizando...</span>
                 <span v-else>Guardar Cambios</span>
               </button>
@@ -71,7 +71,6 @@ const file = ref(null)
 const previewUrl = ref(null)
 const loading = ref(false)
 
-// Sincronizar datos al cargar el componente
 onMounted(() => {
   if (auth.user) {
     name.value = auth.user.name || ''
@@ -83,7 +82,6 @@ function onFileChange(e) {
   const f = e.target.files[0]
   if (!f) return
   
-  // Validación de tamaño (2MB)
   if (f.size > 2 * 1024 * 1024) {
     ui.addError('La imagen es muy pesada (máximo 2MB)')
     return
@@ -104,18 +102,24 @@ async function onSubmit() {
       fd.append('profile_image', file.value)
     }
 
-    // Petición a la ruta unificada en api.php y AuthController.php
+    // Petición al backend
     const response = await api.post('/user/update', fd)
 
-    // Extraer usuario actualizado de la respuesta
-    const updatedUser = response.data.user || response.data
+    // Extraer datos nuevos de la respuesta (pueden venir incompletos de rol)
+    const updatedData = response.data.user || response.data
     
-    // Actualizar estado global del usuario
-    auth.setUser(updatedUser)
+    // 🔥 SOLUCIÓN: Fusionamos el usuario actual con los cambios recibidos
+    // Esto evita que role_id pase a ser 'undefined'
+    const userToSave = {
+      ...auth.user,      // Mantiene el role_id actual (vendedor)
+      ...updatedData     // Actualiza nombre, email y fotos
+    }
+    
+    // Actualizar estado global y localStorage de forma segura
+    auth.setUser(userToSave)
     
     ui.addSuccess('¡Perfil actualizado con éxito!')
     
-    // Limpiar selección de archivo tras éxito
     file.value = null
     previewUrl.value = null
   } catch (err) {
