@@ -1,10 +1,14 @@
 import axios from 'axios';
 
 const api = axios.create({
-    // baseURL corregida: Si estamos en la web (Vercel), priorizamos Render sobre localhost
+    // baseURL: Prioridad a la variable de entorno, si no existe usa Render directamente
     baseURL: import.meta.env.VITE_API_URL 
         ? `${import.meta.env.VITE_API_URL}/api` 
         : 'https://nexoly.onrender.com/api', 
+    
+    // CAMBIO CRÍTICO: Necesario para que coincida con 'supports_credentials => true' del backend
+    withCredentials: true, 
+
     headers: {
         'X-Requested-With': 'XMLHttpRequest',
         'Accept': 'application/json',
@@ -17,16 +21,18 @@ api.interceptors.request.use(config => {
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
     }
+    
+    // Para subir imágenes, axios detecta FormData y pone el Content-Type solo, 
+    // pero nos aseguramos de no romperlo aquí.
     return config;
 }, error => {
     return Promise.reject(error);
 });
 
-// Interceptor de Respuestas: Manejo de errores global Y LIMPIEZA DE URLS
+// Interceptor de Respuestas: Manejo de errores y forzado de HTTPS
 api.interceptors.response.use(
     response => {
-        // PARCHE DEFINITIVO PARA MIXED CONTENT
-        // Si la respuesta trae datos, forzamos que cualquier link de Render use HTTPS
+        // PARCHE DEFINITIVO PARA MIXED CONTENT (HTTPS)
         if (response.data) {
             let resString = JSON.stringify(response.data);
             if (resString.includes('http://nexoly.onrender.com')) {
@@ -39,22 +45,24 @@ api.interceptors.response.use(
     error => {
         const { response, config } = error;
         
-        // También aplicamos la limpieza en caso de que el error traiga URLs (como en validaciones)
+        // Limpieza de URLs en caso de error (validaciones, etc.)
         if (error.response && error.response.data) {
             let errString = JSON.stringify(error.response.data);
-            errString = errString.replaceAll('http://nexoly.onrender.com', 'https://nexoly.onrender.com');
-            error.response.data = JSON.parse(errString);
+            if (errString.includes('http://nexoly.onrender.com')) {
+                errString = errString.replaceAll('http://nexoly.onrender.com', 'https://nexoly.onrender.com');
+                error.response.data = JSON.parse(errString);
+            }
         }
 
-        // Evitar errores si config no existe
         if (!config) return Promise.reject(error);
 
         const isConversations = config.url ? config.url.includes('/conversations') : false;
         const isAuthPage = window.location.pathname === '/login';
 
+        // Manejo de sesión expirada
         if (response && response.status === 401) {
             if (isConversations || isAuthPage) {
-                console.warn('Sesión expirada en chats - Ignorado');
+                console.warn('Sesión expirada o inválida - Silenciado');
                 return Promise.resolve({ data: { data: [] } });
             }
 
@@ -64,10 +72,6 @@ api.interceptors.response.use(
             if (!isAuthPage) {
                 window.location.href = '/login';
             }
-        }
-
-        if (response && response.status === 404 && config.url && config.url.includes('/services/')) {
-            console.error('El servicio solicitado no existe en la DB');
         }
 
         return Promise.reject(error);
