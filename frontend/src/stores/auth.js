@@ -23,8 +23,8 @@ export const useAuthStore = defineStore('auth', {
 
   getters: {
     isAuthenticated: (state) => !!state.token,
-    // Busca el rol de forma flexible por si el nombre cambia en la API
     isProvider: (state) => {
+      // Búsqueda flexible para evitar errores de nombres en la API
       const role = state.user?.role_id || state.user?.role;
       return String(role) === '2';
     },
@@ -41,16 +41,16 @@ export const useAuthStore = defineStore('auth', {
         const token = data.access_token || data.token
         
         if (data && token && data.user) {
-          // CORRECCIÓN CRÍTICA: Si el servidor no mandó el rol, usamos el del formulario
-          const finalUser = {
+          // Si el servidor no envía role_id, lo tomamos del payload original
+          const userWithRole = {
             ...data.user,
             role_id: data.user.role_id || payload.role_id
           }
 
-          console.log("🛠️ [Store] Rol detectado/inyectado:", finalUser.role_id);
+          console.log("🛠️ [Store] Registro exitoso. Rol detectado:", userWithRole.role_id);
           
           this.setToken(token)
-          this.setUser(finalUser)
+          this.setUser(userWithRole)
         }
         return data
       } catch (error) {
@@ -80,15 +80,42 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
+    // 🔥 ACCIÓN BLINDADA: Evita que el rol pase a 'undefined'
     setUser(user) {
       if (user && typeof user === 'object') {
-        this.user = user
-        localStorage.setItem('user', JSON.stringify(user))
+        // Preservamos el rol que ya tenemos si el nuevo objeto no lo trae
+        const currentRole = this.user?.role_id || this.user?.role;
+        const incomingRole = user.role_id || user.role;
+
+        const finalUser = {
+          ...user,
+          role_id: incomingRole || currentRole
+        };
+
+        console.log("💾 [Store] Guardando usuario con Rol final:", finalUser.role_id);
+        
+        this.user = finalUser;
+        localStorage.setItem('user', JSON.stringify(finalUser));
+      }
+    },
+
+    async updateProfile(formData) {
+      try {
+        const res = await authService.updateProfile(formData)
+        const updatedUser = res.user || res.data
+        if (updatedUser) {
+          // setUser ahora se encarga de que no se pierda el rol
+          this.setUser(updatedUser)
+        }
+        return res
+      } catch (error) {
+        console.error("🔥 [Store] Error en actualización:", error);
+        throw error;
       }
     },
 
     logout() {
-      authService.logout() // Notifica a la API
+      authService.logout()
       this.token = null
       this.user = null
       localStorage.removeItem('token')
