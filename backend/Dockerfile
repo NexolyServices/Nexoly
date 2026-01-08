@@ -16,21 +16,18 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www
 COPY . .
 
-# Instalar dependencias de Laravel
-# Agregamos --no-interaction para evitar que el build se trabe
-RUN composer install --no-dev --optimize-autoloader --no-interaction
+# CAMBIO SEGURO: Actualizamos solo la librería de Google para generar un nuevo lock file
+# Esto evita el error "Exit code: 4" sin riesgo de romper tus otras dependencias
+RUN composer update google/apiclient --no-dev --optimize-autoloader --no-interaction
 
 # Asegurar permisos correctos ANTES de arrancar
 RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
 RUN chmod -R 775 /var/www/storage /var/www/bootstrap/cache
 
-# Exponer el puerto que usa Render (aunque CMD lo define, es buena práctica)
+# Exponer el puerto que usa Render
 EXPOSE 10000
 
 # Comando optimizado
-# 1. Limpiamos caché por si acaso
-# 2. Ejecutamos migraciones
-# 3. Iniciamos el servidor
 CMD php artisan cache:clear && \
     php artisan config:cache && \
     php artisan migrate --force && \
