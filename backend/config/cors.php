@@ -2,23 +2,15 @@
 
 return [
     'paths' => ['api/*', 'sanctum/csrf-cookie'],
-
     'allowed_methods' => ['*'],
-
-    // Agrega tus dominios EXACTOS (sin la barra / al final)
+    // Pon tus URLs reales AQUÍ. Si falta una, el navegador bloquea el Login.
     'allowed_origins' => [
         'https://nexoly.vercel.app',
-        'http://localhost:5173',
+        'http://localhost:5173'
     ],
-
     'allowed_origins_patterns' => [],
-
     'allowed_headers' => ['*'],
-
     'exposed_headers' => [],
-
     'max_age' => 0,
-
-    // ESTO ES LO QUE ESTÁ CAUSANDO EL BLOQUEO SI NO ESTÁ BIEN CONFIGURADO ARRIBA
-    'supports_credentials' => true,
+    'supports_credentials' => true, // Déjalo en true para que el Login funcione bien con JWT/Sanctum
 ];

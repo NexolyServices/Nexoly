@@ -1,38 +1,38 @@
 import axios from 'axios';
 
 const api = axios.create({
-    // baseURL: Prioridad a la variable de entorno, si no existe usa Render directamente
+    // Prioriza la variable de entorno de Vercel, si no existe usa la URL directa
     baseURL: import.meta.env.VITE_API_URL 
         ? `${import.meta.env.VITE_API_URL}/api` 
-        : 'https://nexoly.onrender.com/api', 
+        : 'https://nexoly.onrender.com/api',
     
-    // CAMBIO CRÍTICO: Necesario para que coincida con 'supports_credentials => true' del backend
-    withCredentials: true, 
-
+    // Lo ponemos en FALSE para que no choque con el '*' en el config/cors.php del backend
+    withCredentials: false, 
+    
     headers: {
-        'X-Requested-With': 'XMLHttpRequest',
         'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
     }
 });
 
-// Interceptor de Peticiones: Adjunta el Token automáticamente
+// Interceptor para adjuntar el Token de usuario
 api.interceptors.request.use(config => {
     const token = localStorage.getItem('token');
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
     }
-    
-    // Para subir imágenes, axios detecta FormData y pone el Content-Type solo, 
-    // pero nos aseguramos de no romperlo aquí.
     return config;
 }, error => {
     return Promise.reject(error);
 });
 
-// Interceptor de Respuestas: Manejo de errores y forzado de HTTPS
+/**
+ * PARCHE DE SEGURIDAD PARA IMÁGENES
+ * Convierte cualquier respuesta http:// en https:// para evitar errores de 
+ * contenido mixto en el navegador cuando cargues fotos de perfil.
+ */
 api.interceptors.response.use(
     response => {
-        // PARCHE DEFINITIVO PARA MIXED CONTENT (HTTPS)
         if (response.data) {
             let resString = JSON.stringify(response.data);
             if (resString.includes('http://nexoly.onrender.com')) {
@@ -43,37 +43,15 @@ api.interceptors.response.use(
         return response;
     },
     error => {
-        const { response, config } = error;
-        
-        // Limpieza de URLs en caso de error (validaciones, etc.)
-        if (error.response && error.response.data) {
-            let errString = JSON.stringify(error.response.data);
-            if (errString.includes('http://nexoly.onrender.com')) {
-                errString = errString.replaceAll('http://nexoly.onrender.com', 'https://nexoly.onrender.com');
-                error.response.data = JSON.parse(errString);
-            }
-        }
-
-        if (!config) return Promise.reject(error);
-
-        const isConversations = config.url ? config.url.includes('/conversations') : false;
-        const isAuthPage = window.location.pathname === '/login';
-
-        // Manejo de sesión expirada
-        if (response && response.status === 401) {
-            if (isConversations || isAuthPage) {
-                console.warn('Sesión expirada o inválida - Silenciado');
-                return Promise.resolve({ data: { data: [] } });
-            }
-
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            
+        // Manejo básico de sesión expirada (401)
+        if (error.response && error.response.status === 401) {
+            const isAuthPage = window.location.pathname === '/login';
             if (!isAuthPage) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
                 window.location.href = '/login';
             }
         }
-
         return Promise.reject(error);
     }
 );
