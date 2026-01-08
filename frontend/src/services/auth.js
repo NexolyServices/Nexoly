@@ -4,8 +4,9 @@ export const authService = {
     // 1. LOGIN
     async login(credentials) {
         const response = await api.post('/auth/login', credentials);
-        if (response.data.token) {
-            this.setToken(response.data.token); // Almacena el token
+        // CAMBIO AQUÍ: El backend envía 'access_token', no 'token'
+        if (response.data.access_token) {
+            this.setToken(response.data.access_token); 
             localStorage.setItem('user', JSON.stringify(response.data.user));
         }
         return response.data;
@@ -14,31 +15,29 @@ export const authService = {
     // 2. REGISTER
     async register(userData) {
         const response = await api.post('/auth/register', userData);
-        // Si el backend devuelve token, comportarnos como login automático
-        if (response.data.token) {
-            this.setToken(response.data.token);
+        // CAMBIO AQUÍ: El backend envía 'access_token', no 'token'
+        if (response.data.access_token) {
+            this.setToken(response.data.access_token);
             localStorage.setItem('user', JSON.stringify(response.data.user));
         }
         return response.data;
     },
 
-    // 3. LOGOUT
+    // ... el resto del código (logout, updateProfile, etc.) está perfecto
     async logout() {
         try {
             await api.post('/auth/logout');
         } finally {
-            this.removeToken(); // Limpia el storage
+            this.removeToken(); 
             localStorage.removeItem('user');
         }
     },
 
-    // UPDATE PROFILE (FormData expected, multipart/form-data)
     async updateProfile(formData) {
         const response = await api.post('/user/update', formData)
         return response.data
     },
 
-    // 4. TOKEN STORAGE (Funciones de ayuda)
     setToken(token) {
         localStorage.setItem('token', token);
     },
