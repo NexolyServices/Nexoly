@@ -1,8 +1,10 @@
 import axios from 'axios';
 
 const api = axios.create({
-    // baseURL configurada correctamente
-    baseURL: import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : 'http://localhost:8000/api',
+    // baseURL corregida: Si estamos en la web (Vercel), priorizamos Render sobre localhost
+    baseURL: import.meta.env.VITE_API_URL 
+        ? `${import.meta.env.VITE_API_URL}/api` 
+        : 'https://nexoly.onrender.com/api', 
     headers: {
         'X-Requested-With': 'XMLHttpRequest',
         'Accept': 'application/json',
@@ -44,7 +46,10 @@ api.interceptors.response.use(
             error.response.data = JSON.parse(errString);
         }
 
-        const isConversations = config.url.includes('/conversations');
+        // Evitar errores si config no existe
+        if (!config) return Promise.reject(error);
+
+        const isConversations = config.url ? config.url.includes('/conversations') : false;
         const isAuthPage = window.location.pathname === '/login';
 
         if (response && response.status === 401) {
@@ -61,7 +66,7 @@ api.interceptors.response.use(
             }
         }
 
-        if (response && response.status === 404 && config.url.includes('/services/')) {
+        if (response && response.status === 404 && config.url && config.url.includes('/services/')) {
             console.error('El servicio solicitado no existe en la DB');
         }
 
