@@ -1,12 +1,12 @@
 import axios from 'axios';
 
 const api = axios.create({
-    // Prioriza la variable de entorno de Vercel, si no existe usa la URL directa
+    // Usa la variable de Vercel o la de Render directamente
     baseURL: import.meta.env.VITE_API_URL 
         ? `${import.meta.env.VITE_API_URL}/api` 
         : 'https://nexoly.onrender.com/api',
     
-    // Lo ponemos en FALSE para que no choque con el '*' en el config/cors.php del backend
+    // DEBE ser false porque el backend está configurado con '*'
     withCredentials: false, 
     
     headers: {
@@ -15,7 +15,7 @@ const api = axios.create({
     }
 });
 
-// Interceptor para adjuntar el Token de usuario
+// Interceptor para el Token
 api.interceptors.request.use(config => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -26,11 +26,7 @@ api.interceptors.request.use(config => {
     return Promise.reject(error);
 });
 
-/**
- * PARCHE DE SEGURIDAD PARA IMÁGENES
- * Convierte cualquier respuesta http:// en https:// para evitar errores de 
- * contenido mixto en el navegador cuando cargues fotos de perfil.
- */
+// Parche para que las fotos de perfil carguen con HTTPS siempre
 api.interceptors.response.use(
     response => {
         if (response.data) {
@@ -43,7 +39,6 @@ api.interceptors.response.use(
         return response;
     },
     error => {
-        // Manejo básico de sesión expirada (401)
         if (error.response && error.response.status === 401) {
             const isAuthPage = window.location.pathname === '/login';
             if (!isAuthPage) {
