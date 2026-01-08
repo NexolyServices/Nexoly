@@ -4,7 +4,6 @@
     <div class="absolute bottom-0 left-0 w-[500px] h-[500px] bg-purple-600/5 blur-[120px] rounded-full"></div>
 
     <div class="max-w-2xl w-full relative z-10 animate-fade-in-up">
-      
       <div class="text-center mb-10">
         <h2 class="text-3xl font-black text-white uppercase italic tracking-tighter">
           {{ step === 1 ? 'Selecciona tu Perfil' : 'Tu Ubicación' }}
@@ -35,7 +34,6 @@
 
       <div v-if="step === 2" class="bg-slate-900/40 backdrop-blur-2xl border border-white/10 p-8 md:p-10 rounded-[3rem] shadow-2xl animate-slide-in">
         <form @submit.prevent="finishSetup" class="space-y-6">
-          
           <div v-if="form.role_id === 2" class="animate-fade-in">
             <label class="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-2 block px-1">Nombre de tu Negocio / Oficio</label>
             <input v-model="form.business_name" type="text" placeholder="Ej: Juan Carpintería"
@@ -116,33 +114,35 @@ const finishSetup = async () => {
       headers: { Authorization: `Bearer ${token}` }
     });
     
-    // 2. Validación de respuesta
+    // 2. Validación de respuesta exhaustiva
     if (response.data && response.data.user) {
       const updatedUser = response.data.user;
 
-      // Actualizamos Pinia y LocalStorage usando la acción blindada
+      // REFUERZO 1: Guardar en Store y forzar persistencia inmediata
       auth.setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
       
       ui.addSuccess('¡Perfil activado correctamente!');
       
-      // 3. Redirección con seguro de recarga
-      // Usamos window.location para asegurar que el Router Guard lea los datos frescos
+      // REFUERZO 2: Esperar un poco más para que el Router Guard detecte el cambio
+      // y usar window.location para resetear el ciclo de vida del router
       setTimeout(() => {
         const targetPath = String(updatedUser.role_id) === '2' ? '/dashboard' : '/services';
-        window.location.href = targetPath;
-      }, 600);
+        console.log("🚀 [CompleteProfile] Redirigiendo a:", targetPath);
+        window.location.href = targetPath; 
+      }, 800); 
       
     } else {
-      throw new Error('No se recibieron los datos del usuario');
+      throw new Error('El servidor no devolvió los datos actualizados del usuario.');
     }
 
   } catch (err) {
-    console.error("🔥 [CompleteProfile] Error:", err);
+    console.error("🔥 [CompleteProfile] Error detectado:", err);
     
-    // Manejo de error de red específico
+    // Manejo de error de red o timeout
     const errorMessage = err.code === 'ERR_NETWORK' 
-      ? 'Error de conexión. El servidor de Render podría estar despertando, intenta de nuevo.' 
-      : (err.response?.data?.message || 'Error al completar el perfil');
+      ? 'Error de conexión. Intenta de nuevo en unos segundos, el servidor está procesando tu solicitud.' 
+      : (err.response?.data?.message || 'Hubo un problema al guardar tus datos.');
 
     ui.addError(errorMessage);
   } finally {
@@ -152,6 +152,7 @@ const finishSetup = async () => {
 </script>
 
 <style scoped>
+/* Tus animaciones se mantienen intactas */
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
