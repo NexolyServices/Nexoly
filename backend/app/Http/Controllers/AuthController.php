@@ -107,8 +107,8 @@ class AuthController extends Controller
     }
 
     /**
-     * ✨ NUEVO MÉTODO: Completar Perfil tras registro
-     * Este método guarda la ubicación y el rol elegido.
+     * ✨ MÉTODO CORREGIDO: Completar Perfil
+     * Se añade refresh() para asegurar que la respuesta incluya los datos guardados.
      */
     public function completeProfile(Request $request)
     {
@@ -125,13 +125,18 @@ class AuthController extends Controller
             'city'    => 'required|string',
         ]);
 
+        // Guardamos en la base de datos de Render
         $user->update([
             'role_id'       => $request->role_id,
             'country'       => $request->country,
             'state'         => $request->state,
             'city'          => $request->city,
-            'business_name' => $request->business_name, // Puede ser null
+            'business_name' => $request->business_name,
         ]);
+
+        // 💡 IMPORTANTE: Refrescamos el modelo para que el JSON de respuesta
+        // contenga la ciudad y el estado recién guardados.
+        $user->refresh();
 
         return response()->json([
             'message' => 'Perfil configurado con éxito',

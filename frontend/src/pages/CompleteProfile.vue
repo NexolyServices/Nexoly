@@ -66,7 +66,7 @@
           </div>
 
           <button type="submit" :disabled="loading" class="w-full bg-white text-black py-5 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-indigo-600 hover:text-white transition-all active:scale-95 disabled:opacity-50 shadow-xl">
-            {{ loading ? 'Sincronizando con la nube...' : 'Finalizar Registro' }}
+            {{ loading ? 'Sincronizando con Nexoly...' : 'Finalizar Registro' }}
           </button>
         </form>
       </div>
@@ -111,27 +111,38 @@ const finishSetup = async () => {
   try {
     const token = localStorage.getItem('token');
     
-    // Petición a Render con el token de seguridad
+    // 1. Petición al backend con refresh() ya integrado en PHP
     const response = await axios.post('/user/complete-profile', form, {
       headers: { Authorization: `Bearer ${token}` }
     });
     
-    // ACTUALIZACIÓN DE DATOS (Soluciona el problema de "Perfil incompleto")
-    auth.user = { ...response.data.user };
-    localStorage.setItem('user', JSON.stringify(response.data.user));
-    
-    ui.addSuccess('¡Perfil Nexoly Activado!');
-    
-    // Redirección profesional basada en rol
-    if(form.role_id === 2) {
-        router.push('/dashboard');
+    // 2. Verificación de que el backend devolvió el usuario completo
+    if (response.data.user && response.data.user.city) {
+      
+      // Actualizamos Pinia Store
+      auth.user = { ...response.data.user };
+      
+      // Forzamos la actualización de LocalStorage para el Router Guard
+      localStorage.setItem('user', JSON.stringify(response.data.user));
+      
+      ui.addSuccess('¡Perfil activado correctamente!');
+      
+      // 3. Pequeño delay para asegurar persistencia en el navegador
+      setTimeout(() => {
+        if(form.role_id === 2) {
+            router.push('/dashboard');
+        } else {
+            router.push('/services');
+        }
+      }, 300);
+      
     } else {
-        router.push('/services');
+      throw new Error('El servidor no devolvió los datos actualizados');
     }
 
   } catch (err) {
-    console.error("Error al guardar:", err.response?.data || err);
-    ui.addError('Error de conexión con Render. Reintenta.');
+    console.error("Error al guardar perfil:", err.response?.data || err);
+    ui.addError(err.response?.data?.message || 'Error de comunicación con el servidor');
   } finally {
     loading.value = false
   }
