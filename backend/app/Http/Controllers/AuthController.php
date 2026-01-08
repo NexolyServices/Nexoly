@@ -1,118 +1,110 @@
-<template>
-  <div class="min-h-screen bg-[#0f111a] pt-32 pb-20 px-4">
-    <div class="max-w-2xl mx-auto">
-      
-      <div class="mb-10 text-center">
-        <h1 class="text-4xl md:text-5xl font-black text-white tracking-tighter uppercase italic">
-          Mi <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">Perfil</span>
-        </h1>
-        <p class="text-slate-500 mt-2 font-medium">Actualiza tu información personal y presencia visual.</p>
-      </div>
+<?php
 
-      <div class="relative bg-slate-900/40 backdrop-blur-2xl border border-white/10 p-8 md:p-12 rounded-[2.5rem] shadow-2xl">
-        <form @submit.prevent="onSubmit" class="space-y-8">
-          
-          <div class="flex flex-col items-center mb-12">
-            <div class="relative group">
-              <div class="w-32 h-32 rounded-full overflow-hidden border-4 border-slate-800 bg-slate-800">
-                <img v-if="previewUrl" :src="previewUrl" class="object-cover w-full h-full" />
-                <img v-else-if="auth.user?.profile_image" :src="auth.user.profile_image" class="object-cover w-full h-full" />
-                <div v-else class="w-full h-full flex items-center justify-center bg-indigo-500/10 text-indigo-400 text-3xl font-black">
-                  {{ name ? name.charAt(0) : 'U' }}
-                </div>
-              </div>
-              
-              <label class="absolute bottom-1 right-1 bg-indigo-600 hover:bg-indigo-500 text-white p-2.5 rounded-full cursor-pointer shadow-lg border-2 border-[#0f111a]">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                </svg>
-                <input type="file" accept="image/*" @change="onFileChange" class="hidden" />
-              </label>
-            </div>
-            <p class="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mt-6">Foto de Perfil</p>
-          </div>
+namespace App\Http\Controllers;
 
-          <div class="space-y-6">
-            <div>
-              <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block px-1">Nombre Público</label>
-              <input v-model="name" class="w-full bg-[#0f111a]/50 border border-white/5 text-white p-4 rounded-2xl focus:outline-none focus:border-indigo-500 font-bold" required />
-            </div>
+use Illuminate\Http\Request;
+use App\Models\User;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
-            <div>
-              <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block px-1">Correo Electrónico</label>
-              <input v-model="email" type="email" class="w-full bg-[#0f111a]/50 border border-white/5 text-white p-4 rounded-2xl focus:outline-none focus:border-indigo-500 font-bold" required />
-            </div>
+class AuthController extends Controller
+{
+    /**
+     * Iniciar Sesión
+     */
+    public function login(Request $request)
+    {
+        $credentials = $request->only('email', 'password');
 
-            <div class="pt-6">
-              <button :disabled="loading" class="w-full bg-white text-black py-5 rounded-2xl font-black uppercase text-xs tracking-[0.2em] hover:bg-indigo-600 hover:text-white transition-all disabled:opacity-50">
-                <span v-if="loading">Sincronizando...</span>
-                <span v-else>Guardar Cambios</span>
-              </button>
-            </div>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-</template>
+        // Intenta autenticar usando el guard de JWT (api)
+        if (!$token = auth('api')->attempt($credentials)) {
+            return response()->json([
+                'message' => 'Acceso denegado: Verifica tus credenciales'
+            ], 401);
+        }
 
-<script setup>
-import { ref, onMounted } from 'vue'
-import { useAuthStore } from '../stores/auth'
-import { useUiStore } from '../stores/ui'
-import api from '../services/api' 
-
-const auth = useAuthStore()
-const ui = useUiStore()
-
-const name = ref('')
-const email = ref('')
-const file = ref(null)
-const previewUrl = ref(null)
-const loading = ref(false)
-
-onMounted(() => {
-  if (auth.user) {
-    name.value = auth.user.name || ''
-    email.value = auth.user.email || ''
-  }
-})
-
-function onFileChange(e) {
-  const f = e.target.files[0]
-  if (!f) return
-  if (f.size > 2 * 1024 * 1024) {
-    ui.addError('El archivo supera los 2MB')
-    return
-  }
-  file.value = f
-  previewUrl.value = URL.createObjectURL(f)
-}
-
-async function onSubmit() {
-  loading.value = true
-  try {
-    const fd = new FormData()
-    fd.append('name', name.value)
-    fd.append('email', email.value)
-    if (file.value) {
-      fd.append('profile_image', file.value)
+        return response()->json([
+            'access_token' => $token,
+            'token_type' => 'bearer',
+            'user' => auth('api')->user()
+        ]);
     }
 
-    // Ruta recién creada en api.php
-    const response = await api.post('/user/update', fd)
+    /**
+     * Registro de Usuario
+     */
+    public function register(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users',
+            'password' => 'required|string|min:6',
+        ]);
 
-    // Actualizamos el usuario en el estado global
-    const updatedUser = response.data.user || response.data.data || response.data
-    auth.setUser(updatedUser)
-    
-    ui.addSuccess('¡Perfil actualizado con éxito!')
-    file.value = null 
-  } catch (err) {
-    console.error('Error al actualizar perfil:', err)
-    ui.addError(err.response?.data?.message || 'Error al conectar con el servidor')
-  } finally {
-    loading.value = false
-  }
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+        ]);
+
+        $token = auth('api')->login($user);
+
+        return response()->json([
+            'access_token' => $token,
+            'user' => $user
+        ], 201);
+    }
+
+    /**
+     * Actualizar Perfil (Compatible con tu FormData de Vue)
+     */
+    public function updateProfile(Request $request)
+    {
+        $user = auth('api')->user();
+
+        if (!$user) {
+            return response()->json(['message' => 'Usuario no encontrado'], 404);
+        }
+
+        // Actualizar datos básicos
+        $user->name = $request->input('name', $user->name);
+        $user->email = $request->input('email', $user->email);
+
+        // Si subiste una imagen de perfil
+        if ($request->hasFile('profile_image')) {
+            // Borrar imagen anterior si existe para no llenar el server de basura
+            if ($user->profile_image) {
+                $oldPath = str_replace(asset('storage/'), '', $user->profile_image);
+                Storage::disk('public')->delete($oldPath);
+            }
+
+            $path = $request->file('profile_image')->store('profiles', 'public');
+            $user->profile_image = asset('storage/' . $path);
+        }
+
+        $user->save();
+
+        return response()->json([
+            'message' => 'Perfil actualizado con éxito',
+            'user' => $user
+        ]);
+    }
+
+    /**
+     * Obtener datos del usuario autenticado
+     */
+    public function me()
+    {
+        return response()->json(auth('api')->user());
+    }
+
+    /**
+     * Cerrar Sesión
+     */
+    public function logout()
+    {
+        auth('api')->logout();
+        return response()->json(['message' => 'Sesión cerrada correctamente']);
+    }
 }
-</script>
