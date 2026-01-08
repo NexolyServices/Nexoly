@@ -107,9 +107,10 @@ import { useUiStore } from '../stores/ui'
 
 const email = ref('')
 const password = ref('')
-const showPassword = ref(false) // VARIABLE PARA EL OJO
+const showPassword = ref(false)
 const loading = ref(false)
 const error = ref(null)
+
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
@@ -117,19 +118,26 @@ const ui = useUiStore()
 
 const onSubmit = async () => {
   loading.value = true
-  error.value = null
+  error.value = null // Limpia el error rojo de intentos previos
+  
   try {
-    await auth.login({ email: email.value, password: password.value })
+    // Intentamos el login. El authStore ya debe usar 'access_token'
+    const response = await auth.login({ 
+      email: email.value, 
+      password: password.value 
+    })
     
+    // Si la función login terminó sin arrojar error (catch), procedemos
+    console.log("🚀 Redirigiendo al usuario...");
     ui.addSuccess('Acceso autorizado')
     
-    const redirect = route.query.redirect || null
-    if (redirect) {
-      router.push(redirect)
-    } else {
-      router.push('/services') 
-    }
+    // Priorizamos la redirección solicitada o vamos a /services
+    const redirectPath = route.query.redirect || '/services'
+    router.push(redirectPath)
+    
   } catch (err) {
+    console.error("❌ Error detectado en el componente:", err)
+    // Mostramos el mensaje de error real del servidor o uno genérico
     error.value = err.response?.data?.message || 'Acceso denegado: Verifica tus credenciales'
   } finally {
     loading.value = false
