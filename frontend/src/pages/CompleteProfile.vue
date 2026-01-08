@@ -38,14 +38,14 @@
           
           <div v-if="form.role_id === 2" class="animate-fade-in">
             <label class="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-2 block px-1">Nombre de tu Negocio / Oficio</label>
-            <input v-model="form.business_name" type="text" placeholder="Ej: Juan Carpintería o Tech Solutions"
+            <input v-model="form.business_name" type="text" placeholder="Ej: Juan Carpintería"
               class="w-full bg-[#0f111a]/60 border border-white/5 text-white p-4 rounded-2xl focus:border-indigo-500 outline-none transition-all text-sm" />
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
               <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block px-1">País</label>
-              <select v-model="form.country" class="w-full bg-[#0f111a]/60 border border-white/5 text-white p-4 rounded-2xl outline-none text-sm appearance-none cursor-pointer">
+              <select v-model="form.country" class="w-full bg-[#0f111a]/60 border border-white/5 text-white p-4 rounded-2xl outline-none text-sm cursor-pointer appearance-none">
                 <option value="México">México</option>
                 <option value="Colombia">Colombia</option>
                 <option value="España">España</option>
@@ -66,11 +66,10 @@
           </div>
 
           <button type="submit" :disabled="loading" class="w-full bg-white text-black py-5 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-indigo-600 hover:text-white transition-all active:scale-95 disabled:opacity-50">
-            {{ loading ? 'Guardando...' : 'Finalizar Registro' }}
+            {{ loading ? 'Configurando...' : 'Finalizar Registro' }}
           </button>
         </form>
       </div>
-
     </div>
   </div>
 </template>
@@ -110,17 +109,28 @@ const finishSetup = async () => {
 
   loading.value = true
   try {
-    // IMPORTANTE: Esta ruta la crearemos en el backend para actualizar al usuario logueado
+    // CORRECCIÓN: Usamos la URL base configurada o la completa de Render + /api
+    // Si tienes baseURL en axios configurada en main.js, solo deja '/api/user/complete-profile'
     const response = await axios.post('/user/complete-profile', form)
     
-    // Actualizamos el store global con la nueva info
+    // 1. Actualizar el Store de Pinia
     auth.user = response.data.user
     
-    ui.addSuccess('¡Perfil completado con éxito!')
-    router.push('/services')
+    // 2. IMPORTANTE: Actualizar el localStorage para que el router guard vea el cambio
+    localStorage.setItem('user', JSON.stringify(response.data.user))
+    
+    ui.addSuccess('¡Perfil completado!')
+    
+    // 3. Redirigir según el rol elegido
+    if(form.role_id === 2) {
+        router.push('/dashboard') // Proveedores al panel de control
+    } else {
+        router.push('/services') // Clientes al catálogo
+    }
+
   } catch (err) {
-    ui.addError('Error al guardar los datos')
-    console.error(err)
+    console.error("Error en complete-profile:", err.response?.data || err)
+    ui.addError(err.response?.data?.message || 'Error al guardar los datos')
   } finally {
     loading.value = false
   }
