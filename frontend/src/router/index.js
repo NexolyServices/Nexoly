@@ -49,7 +49,6 @@ const routes = [
     component: () => import('../pages/Cart.vue'), 
     meta: { requiresAuth: true } 
   },
-  
   { 
     path: '/checkout/:id?', 
     name: 'Checkout', 
@@ -57,7 +56,6 @@ const routes = [
     props: true,
     meta: { requiresAuth: true } 
   },
-  
   { 
     path: '/my-contracts', 
     name: 'MyContracts', 
@@ -122,17 +120,19 @@ router.beforeEach((to, from, next) => {
     return next({ name: 'Login', query: { redirect: to.fullPath } })
   }
 
-  // 2. 🚨 CONTROL DE FLUJO DE PERFIL (SOLUCIÓN AL BUCLE)
-  // Si el usuario tiene sesión pero le falta la ciudad, lo obligamos a ir a ubicación
-  const isProfileIncomplete = token && (!user?.city || user?.city === "");
+  // 2. 🚨 CONTROL DE FLUJO DE PERFIL MEJORADO
+  // Verificamos si realmente falta la ciudad (trim para evitar espacios vacíos)
+  const hasCity = user?.city && String(user.city).trim() !== "";
+  const isProfileIncomplete = token && user && !hasCity;
 
+  // Si el perfil está incompleto y no estamos ya en la página de completar perfil, redirigimos
   if (isProfileIncomplete && to.name !== 'CompleteProfile') {
-    console.warn("📍 [Router] Perfil incompleto detectado. Redirigiendo a ubicación..."); // Aquí integramos tu mensaje de consola
+    console.warn("📍 [Router] Acceso denegado: Perfil sin ubicación.");
     return next({ name: 'CompleteProfile' });
   }
 
-  // Si ya tiene perfil completo y trata de entrar a CompleteProfile, mándalo al Dashboard
-  if (!isProfileIncomplete && to.name === 'CompleteProfile') {
+  // Si el perfil ya tiene ciudad y el usuario intenta entrar a CompleteProfile, lo sacamos de ahí
+  if (token && hasCity && to.name === 'CompleteProfile') {
     return next({ name: 'Dashboard' });
   }
 

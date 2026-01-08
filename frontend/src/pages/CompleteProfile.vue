@@ -116,32 +116,34 @@ const finishSetup = async () => {
       headers: { Authorization: `Bearer ${token}` }
     });
     
-    // 2. Usamos la acción setUser del Store para asegurar consistencia
-    if (response.data.user) {
-      // 🚩 CAMBIO CLAVE: Usamos la acción del store que ya maneja LocalStorage y Pinia
-      auth.setUser(response.data.user);
+    // 2. Validación de respuesta
+    if (response.data && response.data.user) {
+      const updatedUser = response.data.user;
+
+      // Actualizamos Pinia y LocalStorage usando la acción blindada
+      auth.setUser(updatedUser);
       
       ui.addSuccess('¡Perfil activado correctamente!');
       
-      // 3. Redirección forzada
-      // Usamos un delay ligeramente mayor (500ms) para que el navegador 
-      // asiente los datos en el disco duro antes de cambiar de ruta
+      // 3. Redirección con seguro de recarga
+      // Usamos window.location para asegurar que el Router Guard lea los datos frescos
       setTimeout(() => {
-        const targetPath = String(form.role_id) === '2' ? '/dashboard' : '/services';
-        window.location.href = targetPath; // Usamos window.location para resetear el estado del Router
-      }, 500);
+        const targetPath = String(updatedUser.role_id) === '2' ? '/dashboard' : '/services';
+        window.location.href = targetPath;
+      }, 600);
       
     } else {
-      throw new Error('El servidor no devolvió los datos actualizados');
+      throw new Error('No se recibieron los datos del usuario');
     }
 
   } catch (err) {
-    // Si el error es de red (ERR_NAME_NOT_RESOLVED), damos un mensaje más claro
+    console.error("🔥 [CompleteProfile] Error:", err);
+    
+    // Manejo de error de red específico
     const errorMessage = err.code === 'ERR_NETWORK' 
-      ? 'Error de conexión: Revisa que el servidor de Render esté activo' 
-      : (err.response?.data?.message || 'Error de comunicación con el servidor');
-      
-    console.error("Error al guardar perfil:", err);
+      ? 'Error de conexión. El servidor de Render podría estar despertando, intenta de nuevo.' 
+      : (err.response?.data?.message || 'Error al completar el perfil');
+
     ui.addError(errorMessage);
   } finally {
     loading.value = false
