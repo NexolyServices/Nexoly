@@ -23,35 +23,48 @@ export const useAuthStore = defineStore('auth', {
 
   getters: {
     isAuthenticated: (state) => !!state.token,
+    // Verifica si el rol es 2 (Proveedor/Vendedor)
     isProvider: (state) => String(state.user?.role_id) === '2',
     isAdmin: (state) => String(state.user?.role_id) === '3'
   },
 
   actions: {
     async register(payload) {
-      const data = await authService.register(payload)
-      // CAMBIO AQUÍ: Usamos access_token en lugar de token
-      const token = data.access_token || data.token
-      
-      if (data && token && data.user) {
-        this.setToken(token)
-        this.setUser(data.user)
+      try {
+        console.log("📤 [Store Auth] Enviando datos de registro:", payload);
+        const data = await authService.register(payload)
+        
+        // Detectamos el token con los dos nombres posibles
+        const token = data.access_token || data.token
+        
+        if (data && token && data.user) {
+          // Lupa de depuración para ver el rol real que devuelve tu base de datos
+          console.log("🔍 [Store Auth] Usuario recibido del servidor:", data.user);
+          console.log("🆔 [Store Auth] ROL ASIGNADO:", data.user.role_id);
+
+          this.setToken(token)
+          this.setUser(data.user)
+          
+          console.log("✅ [Store Auth] Sesión de nuevo usuario iniciada correctamente.");
+        }
+        return data
+      } catch (error) {
+        console.error("🔥 [Store Auth] Error en acción de registro:", error);
+        throw error;
       }
-      return data
     },
 
     async login(credentials) {
       const data = await authService.login(credentials)
       
-      // CAMBIO CRÍTICO: El backend envía 'access_token'
+      // El backend usa 'access_token' según las capturas de red
       const token = data.access_token || data.token
 
       if (data && token && data.user) {
         this.setToken(token)
         this.setUser(data.user)
-        console.log("✅ Store actualizado con el nuevo token y usuario");
+        console.log("✅ [Store Auth] Login exitoso. Usuario:", data.user.name);
       } else {
-        // Si el token es null o undefined, lanzamos el error que viste antes
         throw new Error("Respuesta del servidor incompleta: No se encontró access_token")
       }
       return data
@@ -84,7 +97,7 @@ export const useAuthStore = defineStore('auth', {
       this.user = null
       localStorage.removeItem('token')
       localStorage.removeItem('user')
-      // localStorage.clear() // Opcional, pero removeItem es más seguro para no borrar otras configs
+      console.log("🚪 [Store Auth] Sesión cerrada.");
       window.location.href = '/login'
     }
   }
