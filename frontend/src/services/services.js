@@ -17,30 +17,26 @@ export const servicesApi = {
 
   // --- NUEVO: CREAR SERVICIO CON UBICACIÓN Y TIEMPO OFICIAL ---
   async createService(formData, coords = null) {
-    try {
-      const officialTime = await this._getOfficialTime();
-      
-      // Adjuntamos la hora de creación oficial
-      formData.append('created_at_official', officialTime);
+  try {
+    const officialTime = await this._getOfficialTime();
+    
+    formData.append('created_at_official', officialTime);
 
-      // Si el componente envió coordenadas, las añadimos al registro
-      if (coords) {
-        formData.append('latitude', coords.latitude);
-        formData.append('longitude', coords.longitude);
-      }
-
-      // Enviamos el FormData al servidor
-      const resp = await api.post('/services', formData, {
-        headers: { 
-          'Content-Type': 'multipart/form-data' 
-        }
-      });
-      return resp.data;
-    } catch (err) {
-      console.error("Error al publicar servicio en Nexoly:", err);
-      throw err;
+    if (coords) {
+      formData.append('latitude', coords.latitude);
+      formData.append('longitude', coords.longitude);
     }
-  },
+
+    // ⚠️ NO HEADERS
+    // ⚠️ NO Content-Type
+    const resp = await api.post('/services', formData);
+
+    return resp.data;
+  } catch (err) {
+    console.error("Error al publicar servicio en Nexoly:", err);
+    throw err;
+  }
+},
 
   async getById(id) {
     return this.fetchService(id);
