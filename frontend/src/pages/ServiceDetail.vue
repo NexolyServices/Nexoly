@@ -250,6 +250,7 @@ function formatPrice(v) {
 }
 
 async function doHire() {
+  // 1. Verificamos sesión
   if (!auth.isAuthenticated) {
     ui.addInfo('Debes iniciar sesión para contratar este servicio');
     router.push({ name: 'Login', query: { redirect: route.fullPath } });
@@ -257,13 +258,16 @@ async function doHire() {
   }
 
   try {
-    // Usamos el cartStore importado correctamente
-    await cartStore.addToCart(service.value); 
+    // EL CAMBIO ESTÁ AQUÍ:
+    // En tu ServiceCard usas "cart.add(props.service)"
+    // Por lo tanto, en el Detail DEBES usar "cartStore.add" (NO addToCart)
+    cartStore.add(service.value); 
+    
     ui.addSuccess('Servicio añadido al carrito');
     router.push({ name: 'Cart' });
   } catch (error) {
     ui.addError('No se pudo añadir al carrito');
-    console.error(error);
+    console.error("Error detectado:", error);
   }
 }
 
