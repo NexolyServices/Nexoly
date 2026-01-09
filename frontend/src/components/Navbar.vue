@@ -32,12 +32,14 @@
             </svg>
           </button>
 
-          <router-link to="/services" class="flex items-center gap-3 group shrink-0">
-            <div class="w-8 h-8 md:w-9 md:h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center shadow-lg group-hover:rotate-12 transition-transform duration-300">
+          <router-link to="/services" class="flex items-center group shrink-0">
+            <div class="w-8 h-8 md:w-9 md:h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center shadow-lg group-hover:rotate-12 transition-transform duration-300 z-10">
               <span class="text-white font-black text-base md:text-lg">N</span>
             </div>
-            <div class="hidden xs:flex flex-col leading-none">
-              <span class="text-sm md:text-base font-black text-white uppercase tracking-tighter italic">Nexoly</span>
+            <div class="hidden md:block max-w-0 group-hover:max-w-[100px] overflow-hidden transition-all duration-500 ease-in-out">
+              <span class="text-sm md:text-base font-black text-white uppercase tracking-tighter italic ml-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                exoly
+              </span>
             </div>
           </router-link>
           
@@ -134,6 +136,11 @@ const cartCount = computed(() => cart.count)
 </script>
 
 <style scoped>
+/* Asegura que el barrido funcione al hacer hover en el grupo del logo */
+.group:hover .max-w-0 {
+  max-width: 100px;
+}
+
 .router-link-active:not(.group) {
   color: white !important;
 }
