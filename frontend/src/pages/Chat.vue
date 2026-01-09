@@ -4,11 +4,13 @@
       
       <div class="bg-slate-900/60 backdrop-blur-xl border border-white/10 p-4 rounded-t-[2.5rem] flex items-center justify-between px-8 shadow-xl">
         <div class="flex items-center gap-4">
-          <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-fuchsia-500 flex items-center justify-center text-white font-black shadow-lg">
-            {{ userId ? 'U' : '?' }}
+          <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-fuchsia-500 flex items-center justify-center text-white font-black shadow-lg uppercase">
+            {{ recipientName ? recipientName.charAt(0) : 'U' }}
           </div>
           <div>
-            <h2 class="text-white font-bold text-sm tracking-tight">Usuario #{{ userId }}</h2>
+            <h2 class="text-white font-bold text-sm tracking-tight">
+              {{ recipientName || 'Cargando...' }}
+            </h2>
             <p class="text-[9px] text-slate-500 font-black uppercase tracking-widest">Chat privado</p>
           </div>
         </div>
@@ -102,12 +104,30 @@ const meId = computed(() => {
 });
 
 const messages = ref([])
+const recipientName = ref('') // NUEVO: Para guardar el nombre del contacto
 const text = ref('')
 const loading = ref(false)
 const messagesEl = ref(null)
 let poll = null
 
-// Función de ayuda para formatear la hora sin depender de APIs externas
+// NUEVA FUNCIÓN: Obtener el nombre del contacto desde la lista de conversaciones
+async function fetchContactName() {
+  try {
+    const res = await servicesApi.getConversations();
+    const contacts = res?.data || res || [];
+    // Buscamos el contacto que coincida con el ID de la URL
+    const contact = contacts.find(c => Number(c.id) === userId);
+    if (contact) {
+      recipientName.value = contact.name;
+    } else {
+      recipientName.value = `Usuario #${userId}`;
+    }
+  } catch (e) {
+    console.error("Error al obtener nombre:", e);
+    recipientName.value = `Usuario #${userId}`;
+  }
+}
+
 const formatChatTime = (dateString) => {
   try {
     const date = new Date(dateString);
@@ -130,7 +150,7 @@ async function load(isSilent = false) {
     const data = await servicesApi.getConversation(userId)
     messages.value = Array.isArray(data) ? data : []
     
-    if (messages.value.length > 0) {
+    if (messages.value.length > 0 && !isSilent) {
       scrollToBottom()
     }
   } catch (e) {
@@ -148,13 +168,15 @@ async function send() {
   try {
     await servicesApi.sendMessage(userId, msg)
     await load(true) 
+    scrollToBottom()
   } catch (e) { 
     ui.addError('Error al enviar el mensaje') 
   }
 }
 
 onMounted(() => {
-  load()
+  fetchContactName(); // 1. Traer el nombre
+  load();            // 2. Traer mensajes
   poll = setInterval(() => load(true), 2500)
 })
 
@@ -164,7 +186,6 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-/* Estilos mantenidos */
 .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
