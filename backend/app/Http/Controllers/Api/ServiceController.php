@@ -7,7 +7,8 @@ use App\Models\Service;
 use App\Models\Contract; 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
+// Importación correcta de la clase de Cloudinary
+use Cloudinary\Cloudinary;
 
 class ServiceController extends Controller
 {
@@ -58,62 +59,64 @@ class ServiceController extends Controller
     /**
      * Crear un nuevo servicio con imagen
      */
-   public function store(Request $request)
-{
-    try {
-        // 1. VERIFICACIÓN DE SEGURIDAD (Aquí es donde está el error)
-        $user = auth('api')->user(); // Intentamos obtener al usuario por el guard de JWT
+    public function store(Request $request)
+    {
+        try {
+            // 1. VERIFICACIÓN DE SEGURIDAD
+            $user = auth('api')->user();
 
-        if (!$user) {
+            if (!$user) {
+                // Si el token falla, podrías usar el ID 1 temporalmente para pruebas, 
+                // pero lo correcto es pedir autenticación.
+                return response()->json([
+                    'message' => 'Error de autenticación',
+                    'error' => 'No se pudo identificar al usuario.'
+                ], 401);
+            }
+
+            // 2. VALIDACIÓN
+            $validated = $request->validate([
+                'title'       => 'required|string|max:255',
+                'description' => 'required|string',
+                'price'       => 'required|numeric|min:0',
+                'category'    => 'required|string',
+                'modality'    => 'required|in:online,onsite',
+                'image'       => 'required|image|max:10240',
+            ]);
+
+            // 3. CLOUDINARY (Conexión Directa para evitar errores de config)
+            $cl = new Cloudinary('cloudinary://221434432647777:88OjPz52kitHEJZNiPYGoGpthl8@dzdbewxmg');
+            $uploadedFile = $request->file('image');
+            $upload = $cl->uploadApi()->upload($uploadedFile->getRealPath(), ['folder' => 'services']);
+            $imageUrl = $upload['secure_url'];
+
+            // 4. CREACIÓN
+            $service = Service::create([
+                'user_id'     => $user->id, 
+                'title'       => $validated['title'],
+                'description' => $validated['description'],
+                'price'       => $validated['price'],
+                'category'    => $validated['category'],
+                'modality'    => $validated['modality'],
+                'image'       => $imageUrl,
+            ]);
+
+            return response()->json($service, 201);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
-                'message' => 'Error de autenticación',
-                'error' => 'No se pudo identificar al usuario. ¿El token es válido?'
-            ], 401);
+                'message' => 'Faltan datos obligatorios',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'Error al crear el servicio',
+                'error'   => $e->getMessage(),
+                'line'    => $e->getLine(),
+                'file'    => $e->getFile()
+            ], 500);
         }
-
-        // 2. VALIDACIÓN
-        $validated = $request->validate([
-            'title'       => 'required|string|max:255',
-            'description' => 'required|string',
-            'price'       => 'required|numeric|min:0',
-            'category'    => 'required|string',
-            'modality'    => 'required|in:online,onsite',
-            'image'       => 'required|image|max:10240',
-        ]);
-
-        // 3. CLOUDINARY
-        $uploadedFile = $request->file('image');
-        $upload = cloudinary()->upload($uploadedFile->getRealPath(), ['folder' => 'services']);
-        $imageUrl = $upload->getSecurePath();
-
-        // 4. CREACIÓN (Usando la variable $user que ya validamos)
-        $service = Service::create([
-            'user_id'     => $user->id, 
-            'title'       => $validated['title'],
-            'description' => $validated['description'],
-            'price'       => $validated['price'],
-            'category'    => $validated['category'],
-            'modality'    => $validated['modality'],
-            'image'       => $imageUrl,
-        ]);
-
-        return response()->json($service, 201);
-
-    } catch (\Illuminate\Validation\ValidationException $e) {
-        return response()->json([
-            'message' => 'Faltan datos obligatorios',
-            'errors' => $e->errors()
-        ], 422);
-    } catch (\Throwable $e) {
-        // ESTO APARECERÁ EN TU CONSOLA DE GOOGLE EN LA PESTAÑA 'RESPONSE'
-        return response()->json([
-            'message' => 'Error al crear el servicio',
-            'error'   => $e->getMessage(),
-            'line'    => $e->getLine(),
-            'file'    => $e->getFile()
-        ], 500);
     }
-}
 
     /**
      * Actualizar servicio existente
@@ -126,7 +129,7 @@ class ServiceController extends Controller
             return response()->json(['message' => 'Servicio no encontrado'], 404);
         }
 
-        if ($service->user_id !== $request->user()->id) {
+        if ($service->user_id !== auth('api')->id()) {
             return response()->json(['message' => 'No autorizado'], 403);
         }
 
@@ -140,11 +143,11 @@ class ServiceController extends Controller
         ]);
 
         if ($request->hasFile('image')) {
-            $uploadedFileUrl = Cloudinary::upload($request->file('image')->getRealPath(), [
+            $cl = new Cloudinary('cloudinary://221434432647777:88OjPz52kitHEJZNiPYGoGpthl8@dzdbewxmg');
+            $uploadedFileUrl = $cl->uploadApi()->upload($request->file('image')->getRealPath(), [
                 'folder' => 'services'
-            ])->getSecurePath();
+            ])['secure_url'];
             
-            // CORRECCIÓN: Usamos 'image' para que coincida con la DB y el método store
             $validated['image'] = $uploadedFileUrl;
         }
 
@@ -177,7 +180,7 @@ class ServiceController extends Controller
     {
         $service = Service::find($id);
         if (!$service) return response()->json(['message' => 'Servicio no encontrado'], 404);
-        if ($service->user_id !== $request->user()->id) return response()->json(['message' => 'No autorizado'], 403);
+        if ($service->user_id !== auth('api')->id()) return response()->json(['message' => 'No autorizado'], 403);
 
         $service->delete();
         return response()->json(['message' => 'Servicio eliminado con éxito']);
@@ -189,7 +192,7 @@ class ServiceController extends Controller
     public function userServices(Request $request)
     {
         return response()->json([
-            'data' => $request->user()->services()->latest()->get()
+            'data' => auth('api')->user()->services()->latest()->get()
         ]);
     }
 
@@ -200,12 +203,12 @@ class ServiceController extends Controller
     {
         $service = Service::findOrFail($id);
 
-        if ($service->user_id === $request->user()->id) {
+        if ($service->user_id === auth('api')->id()) {
             return response()->json(['message' => 'No puedes contratar tu propio servicio'], 400);
         }
 
         $contract = Contract::create([
-            'user_id' => $request->user()->id,
+            'user_id' => auth('api')->id(),
             'service_id' => $service->id,
             'price' => $service->price,
             'status' => 'pending'
@@ -222,7 +225,7 @@ class ServiceController extends Controller
      */
     public function userContracts(Request $request)
     {
-        $contracts = Contract::where('user_id', $request->user()->id)
+        $contracts = Contract::where('user_id', auth('api')->id())
             ->with(['service.user'])
             ->latest()
             ->get();
@@ -235,8 +238,8 @@ class ServiceController extends Controller
      */
     public function userSales(Request $request)
     {
-        $sales = Contract::whereHas('service', function ($query) use ($request) {
-            $query->where('user_id', $request->user()->id);
+        $sales = Contract::whereHas('service', function ($query) {
+            $query->where('user_id', auth('api')->id());
         })
         ->with(['service', 'user'])
         ->latest()
