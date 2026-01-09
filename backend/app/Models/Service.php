@@ -28,32 +28,36 @@ class Service extends Model
      * Calcula un porcentaje basado en el promedio de estrellas y atributos positivos.
      */
     public function getReliabilityScoreAttribute()
-    {
-        // Usamos relationship loading para evitar errores si no están cargadas
-        $reviews = $this->reviews;
-        
-        if (!$reviews || $reviews->count() === 0) {
-            return 100; // Vendedores nuevos empiezan con confianza plena
-        }
+{
+    if (!$this->relationLoaded('reviews') || $this->reviews->isEmpty()) {
+        return 100;
+    }
 
+    try {
+        $reviews = $this->reviews;
         $total = $reviews->count();
 
-        // 1. Base por Estrellas (Máximo 70 puntos)
-        $avgStars = $reviews->avg('rating');
+        $avgStars = $reviews->avg('rating') ?? 0;
         $starScore = ($avgStars / 5) * 70;
 
-        // 2. Bonus por Atributos Positivos (Máximo 30 puntos)
-        // Analizamos cuántas reseñas tienen el array de atributos con contenido
-        $positiveReviews = $reviews->filter(function($review) {
-            // Verificamos que sea un array o un objeto decodificable
-            $attrs = is_string($review->attributes) ? json_decode($review->attributes, true) : $review->attributes;
+        $positiveReviews = $reviews->filter(function ($review) {
+            $attrs = $review->getAttribute('attributes');
+
+            if (is_string($attrs)) {
+                $attrs = json_decode($attrs, true);
+            }
+
             return is_array($attrs) && count($attrs) > 0;
         })->count();
-        
+
         $attributeScore = ($positiveReviews / $total) * 30;
 
         return (int) round($starScore + $attributeScore);
+    } catch (\Throwable $e) {
+        return 100;
     }
+}
+
 
     /**
      * Relación con el Usuario (Dueño del servicio)
