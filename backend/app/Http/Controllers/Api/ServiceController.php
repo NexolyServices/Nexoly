@@ -57,12 +57,12 @@ class ServiceController extends Controller
 {
     try {
 
+        // DEBUG: ver si llega archivo
         if (!$request->hasFile('image')) {
-            return response()->json([
-                'error' => 'La imagen NO está llegando al backend',
+            logger()->error('Imagen NO llegó al backend', [
                 'files' => $request->allFiles(),
                 'data' => $request->all()
-            ], 422);
+            ]);
         }
 
         $validated = $request->validate([
@@ -71,15 +71,29 @@ class ServiceController extends Controller
             'price'       => 'required|numeric|min:0',
             'category'    => 'required|string',
             'modality'    => 'required|in:online,onsite',
-            'image'       => 'required|image|mimes:jpeg,png,jpg,webp|max:10240',
+            'image'       => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240',
         ]);
 
-        $uploadedFileUrl = Cloudinary::upload(
-            $request->file('image')->getRealPath(),
-            ['folder' => 'services']
-        )->getSecurePath();
+        // Cloudinary upload
+        if ($request->hasFile('image')) {
+            try {
+                $uploadedFileUrl = Cloudinary::upload(
+                    $request->file('image')->getRealPath(),
+                    [
+                        'folder' => 'services',
+                        'resource_type' => 'image'
+                    ]
+                )->getSecurePath();
 
-        $validated['image_url'] = $uploadedFileUrl;
+                $validated['image_url'] = $uploadedFileUrl;
+
+            } catch (\Throwable $e) {
+                return response()->json([
+                    'message' => 'Error al subir imagen a Cloudinary',
+                    'cloudinary_error' => $e->getMessage()
+                ], 500);
+            }
+        }
 
         $service = $request->user()->services()->create($validated);
 
@@ -88,11 +102,10 @@ class ServiceController extends Controller
             'service' => $service
         ], 201);
 
-    } catch (\Exception $e) {
+    } catch (\Throwable $e) {
         return response()->json([
-            'message' => 'Error al crear el servicio',
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString()
+            'message' => 'Error general al crear el servicio',
+            'error' => $e->getMessage()
         ], 500);
     }
 }
