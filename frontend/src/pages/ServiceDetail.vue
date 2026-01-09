@@ -115,7 +115,7 @@
                   </div>
                   <button @click="router.push({ name: 'ServiceEdit', params: { id: service.id } })" 
                     class="w-full bg-white text-black py-5 rounded-2xl font-black uppercase text-xs tracking-[0.2em] transition-all hover:bg-indigo-500 hover:text-white active:scale-95 shadow-xl flex items-center justify-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/center" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
                     Editar Servicio
@@ -178,6 +178,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ref, onMounted, computed } from 'vue'
 import { useServicesStore } from '../stores/services'
 import { useAuthStore } from '../stores/auth'
+import { useCartStore } from '../stores/cart' // IMPORTANTE: Agregado el store de carrito
 import { useUiStore } from '../stores/ui'
 import RatingStars from '../components/RatingStars.vue'
 import ReviewList from '../components/ReviewList.vue'
@@ -186,6 +187,7 @@ import ReviewForm from '../components/ReviewForm.vue'
 const route = useRoute()
 const router = useRouter()
 const store = useServicesStore()
+const cartStore = useCartStore() // Inicializamos el store de carrito
 const auth = useAuthStore()
 const ui = useUiStore()
 
@@ -197,6 +199,10 @@ const canReview = ref(false)
 // LÓGICA DE PROPIETARIO
 const isOwner = computed(() => {
   if (!auth.isAuthenticated || !service.value) return false
+  
+  // Si eres admin (role 3), ignoramos el bloqueo de propietario para que puedas probar todo
+  if (Number(auth.user?.role_id) === 3) return false;
+
   const myId = Number(auth.user?.id)
   const ownerId = Number(service.value.user?.id || service.value.user_id)
   return myId === ownerId
@@ -243,7 +249,7 @@ function formatPrice(v) {
   return `$${Number(v).toLocaleString('en-US', { minimumFractionDigits: 2 })}` 
 }
 
-function doHire() {
+async function doHire() {
   if (!auth.isAuthenticated) {
     ui.addInfo('Debes iniciar sesión para contratar este servicio');
     router.push({ name: 'Login', query: { redirect: route.fullPath } });
@@ -251,13 +257,9 @@ function doHire() {
   }
 
   try {
-    // 1. Agregamos el servicio actual al carrito antes de redirigir
-    // Pasamos el objeto del servicio completo
-    await store.addToCart(service.value); 
-    
+    // Usamos el cartStore que es donde reside la lógica de añadir productos
+    await cartStore.addToCart(service.value); 
     ui.addSuccess('Servicio añadido al carrito');
-    
-    // 2. Ahora sí, mandamos al usuario al carrito
     router.push({ name: 'Cart' });
   } catch (error) {
     ui.addError('No se pudo añadir al carrito');
