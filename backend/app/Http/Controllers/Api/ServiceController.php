@@ -59,54 +59,62 @@ class ServiceController extends Controller
      * Crear un nuevo servicio con imagen
      */
     public function store(Request $request)
-    {
-        try {
-            // 1. Validar campos obligatorios para evitar errores Not Null en la DB
-            $validated = $request->validate([
-                'title'       => 'required|string|max:255',
-                'description' => 'required|string',
-                'price'       => 'required|numeric|min:0',
-                'category'    => 'required|string',
-                'modality'    => 'required|in:online,onsite',
-                'image'       => 'required|image|mimes:jpeg,png,jpg,webp|max:10240',
-            ]);
+{
+    try {
+        // 1. Log inicial para saber qué está llegando al servidor
+        \Log::info('Datos recibidos en store:', $request->all());
 
-            // 2. Subida a Cloudinary
-            $uploadedFile = $request->file('image');
-            $upload = cloudinary()->upload(
-                $uploadedFile->getRealPath(),
-                ['folder' => 'services']
-            );
+        // 2. Validación
+        $validated = $request->validate([
+            'title'       => 'required|string|max:255',
+            'description' => 'required|string',
+            'price'       => 'required|numeric|min:0',
+            'category'    => 'required|string',
+            'modality'    => 'required|in:online,onsite',
+            'image'       => 'required|image|mimes:jpeg,png,jpg,webp|max:10240',
+        ]);
 
-            $imageUrl = $upload->getSecurePath();
-
-            // 3. Crear el registro usando los datos validados
-            $service = Service::create([
-                'user_id'     => $request->user()->id,
-                'title'       => $validated['title'],
-                'description' => $validated['description'],
-                'price'       => $validated['price'],
-                'category'    => $validated['category'],
-                'modality'    => $validated['modality'],
-                'image'       => $imageUrl, // Usamos 'image' consistentemente
-            ]);
-
-            return response()->json($service, 201);
-
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json(['errors' => $e->errors()], 422);
-        } catch (\Throwable $e) {
-            Log::error('Error en Service Store:', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-
-            return response()->json([
-                'message' => 'Error al crear el servicio',
-                'error' => $e->getMessage()
-            ], 500);
+        if (!$request->hasFile('image')) {
+            return response()->json(['message' => 'No se detectó el archivo de imagen'], 422);
         }
+
+        // 3. Cloudinary
+        $uploadedFile = $request->file('image');
+        $upload = cloudinary()->upload($uploadedFile->getRealPath(), ['folder' => 'services']);
+        $imageUrl = $upload->getSecurePath();
+
+        // 4. Creación
+        // Usamos auth()->id() que es más seguro para obtener el ID del usuario
+        $service = Service::create([
+            'user_id'     => auth()->id() ?? $request->user()->id,
+            'title'       => $validated['title'],
+            'description' => $validated['description'],
+            'price'       => $validated['price'],
+            'category'    => $validated['category'],
+            'modality'    => $validated['modality'],
+            'image'       => $imageUrl,
+        ]);
+
+        return response()->json($service, 201);
+
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        // Si la validación falla, esto te dirá qué campo falta
+        return response()->json([
+            'message' => 'Error de validación',
+            'errors' => $e->errors()
+        ], 422);
+
+    } catch (\Throwable $e) {
+        // 🚨 ESTO MANDARÁ TODO EL DETALLE A TU CONSOLA (Network -> Response)
+        return response()->json([
+            'message' => 'Error crítico al crear el servicio',
+            'error'   => $e->getMessage(),
+            'file'    => $e->getFile(),
+            'line'    => $e->getLine(),
+            'trace'   => explode("\n", $e->getTraceAsString())[0] // Solo la primera línea del rastro para no saturar
+        ], 500);
     }
+}
 
     /**
      * Actualizar servicio existente
