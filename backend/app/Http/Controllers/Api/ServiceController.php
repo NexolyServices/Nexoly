@@ -6,12 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Models\Service;
 use App\Models\Contract; 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
 
 class ServiceController extends Controller
 {
+    /**
+     * Listar servicios con filtros
+     */
     public function index()
     {
         try {
@@ -53,53 +55,62 @@ class ServiceController extends Controller
         }
     }
 
-  public function store(Request $request)
-{
-    try {
-        if (!$request->hasFile('image')) {
+    /**
+     * Crear un nuevo servicio con imagen
+     */
+    public function store(Request $request)
+    {
+        try {
+            // 1. Validar campos obligatorios para evitar errores Not Null en la DB
+            $validated = $request->validate([
+                'title'       => 'required|string|max:255',
+                'description' => 'required|string',
+                'price'       => 'required|numeric|min:0',
+                'category'    => 'required|string',
+                'modality'    => 'required|in:online,onsite',
+                'image'       => 'required|image|mimes:jpeg,png,jpg,webp|max:10240',
+            ]);
+
+            // 2. Subida a Cloudinary
+            $uploadedFile = $request->file('image');
+            $upload = cloudinary()->upload(
+                $uploadedFile->getRealPath(),
+                ['folder' => 'services']
+            );
+
+            $imageUrl = $upload->getSecurePath();
+
+            // 3. Crear el registro usando los datos validados
+            $service = Service::create([
+                'user_id'     => $request->user()->id,
+                'title'       => $validated['title'],
+                'description' => $validated['description'],
+                'price'       => $validated['price'],
+                'category'    => $validated['category'],
+                'modality'    => $validated['modality'],
+                'image'       => $imageUrl, // Usamos 'image' consistentemente
+            ]);
+
+            return response()->json($service, 201);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json(['errors' => $e->errors()], 422);
+        } catch (\Throwable $e) {
+            Log::error('Error en Service Store:', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
             return response()->json([
-                'message' => 'No se recibió la imagen'
-            ], 422);
+                'message' => 'Error al crear el servicio',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        $uploadedFile = $request->file('image');
-
-        $upload = cloudinary()->upload(
-            $uploadedFile->getRealPath(),
-            [
-                'folder' => 'services'
-            ]
-        );
-
-        $imageUrl = $upload->getSecurePath();
-
-        // guarda tu servicio normalmente
-        $service = Service::create([
-    'user_id'     => $request->user()->id,
-    'title'       => $request->title,
-    'description' => $request->description,
-    'price'       => $request->price,
-    'category'    => $request->category,
-    'modality'    => $request->modality,
-    'image'       => $imageUrl,
-]);
-
-        return response()->json($service, 201);
-
-    } catch (\Throwable $e) {
-        \Log::error('Error Cloudinary:', [
-            'message' => $e->getMessage(),
-            'trace' => $e->getTraceAsString()
-        ]);
-
-        return response()->json([
-            'message' => 'Error al subir imagen a Cloudinary',
-            'error' => $e->getMessage()
-        ], 500);
     }
-}
 
-
+    /**
+     * Actualizar servicio existente
+     */
     public function update(Request $request, $id)
     {
         $service = Service::find($id);
@@ -126,7 +137,8 @@ class ServiceController extends Controller
                 'folder' => 'services'
             ])->getSecurePath();
             
-            $validated['image_url'] = $uploadedFileUrl;
+            // CORRECCIÓN: Usamos 'image' para que coincida con la DB y el método store
+            $validated['image'] = $uploadedFileUrl;
         }
 
         $service->update($validated);
@@ -137,6 +149,9 @@ class ServiceController extends Controller
         ]);
     }
 
+    /**
+     * Mostrar detalle de un servicio
+     */
     public function show($id)
     {
         $service = Service::with(['user', 'reviews.user'])->withAvg('reviews', 'rating')->find($id);
@@ -148,6 +163,9 @@ class ServiceController extends Controller
         return response()->json(['data' => $service]);
     }
 
+    /**
+     * Eliminar servicio
+     */
     public function destroy(Request $request, $id)
     {
         $service = Service::find($id);
@@ -158,6 +176,9 @@ class ServiceController extends Controller
         return response()->json(['message' => 'Servicio eliminado con éxito']);
     }
 
+    /**
+     * Servicios del usuario autenticado (Proveedor)
+     */
     public function userServices(Request $request)
     {
         return response()->json([
@@ -165,6 +186,9 @@ class ServiceController extends Controller
         ]);
     }
 
+    /**
+     * Contratar un servicio
+     */
     public function createContract(Request $request, $id)
     {
         $service = Service::findOrFail($id);
@@ -186,6 +210,9 @@ class ServiceController extends Controller
         ], 201);
     }
 
+    /**
+     * Contratos realizados por el usuario (Cliente)
+     */
     public function userContracts(Request $request)
     {
         $contracts = Contract::where('user_id', $request->user()->id)
@@ -196,6 +223,9 @@ class ServiceController extends Controller
         return response()->json(['data' => $contracts]);
     }
 
+    /**
+     * Ventas del usuario (Proveedor)
+     */
     public function userSales(Request $request)
     {
         $sales = Contract::whereHas('service', function ($query) use ($request) {
@@ -208,6 +238,9 @@ class ServiceController extends Controller
         return response()->json(['data' => $sales]);
     }
 
+    /**
+     * Listar categorías únicas
+     */
     public function categories()
     {
         $categories = Service::distinct()->whereNotNull('category')->pluck('category');
