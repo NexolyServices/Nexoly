@@ -21,6 +21,7 @@ class User extends Authenticatable implements JWTSubject
         'name',
         'email',
         'password',
+        'profile_image',
         'role_id',
         'is_suspended',
         // --- NUEVOS CAMPOS AGREGADOS ---

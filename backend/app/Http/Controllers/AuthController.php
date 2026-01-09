@@ -86,12 +86,19 @@ class AuthController extends Controller
     /**
      * Registro de Usuario Manual
      */
+    /**
+     * Registro de Usuario Manual
+     */
     public function register(Request $request)
     {
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email:rfc,dns|max:255|unique:users',
             'password' => 'required|string|min:6',
+        ], [
+            // Aquí recuperamos tus mensajes personalizados:
+            'email.email' => 'El formato del correo no es válido.',
+            'email.unique' => 'Este correo ya está registrado.'
         ]);
 
         $user = User::create([
@@ -109,7 +116,7 @@ class AuthController extends Controller
             'is_new_user' => true
         ], 201);
     }
-
+    
     /**
      * Completar Perfil
      */
