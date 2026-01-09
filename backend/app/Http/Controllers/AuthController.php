@@ -9,11 +9,13 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Google_Client; 
+// LA LÍNEA QUE FALTABA ESTÁ AQUÍ ABAJO:
+use Cloudinary\Cloudinary;
 
 class AuthController extends Controller
 {
     /**
-     * Iniciar Sesión con Google (Login o Registro automático)
+     * Iniciar Sesión con Google
      */
     public function googleLogin(Request $request)
     {
@@ -33,9 +35,6 @@ class AuthController extends Controller
         $isNewUser = false;
 
         if (!$user) {
-            // REGISTRO NUEVO: 
-            // Asignamos role_id => 1 para evitar el error "Not Null Violation" en la DB
-            // Pero marcamos is_new_user como true para que el frontend lo obligue a completar perfil.
             $user = User::create([
                 'name' => $name,
                 'email' => $email,
@@ -45,8 +44,6 @@ class AuthController extends Controller
             ]);
             $isNewUser = true;
         } else {
-            // USUARIO EXISTENTE:
-            // Si le falta la ciudad o el negocio, lo tratamos como nuevo para completar el flujo.
             if (empty($user->city) || empty($user->country)) {
                 $isNewUser = true;
             }
@@ -76,8 +73,6 @@ class AuthController extends Controller
         }
 
         $user = auth('api')->user();
-        
-        // Verificamos si el perfil está incompleto (falta ciudad o país)
         $isNewUser = (empty($user->city) || empty($user->country));
 
         return response()->json([
@@ -97,16 +92,13 @@ class AuthController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email:rfc,dns|max:255|unique:users',
             'password' => 'required|string|min:6',
-        ], [
-            'email.email' => 'El formato del correo no es válido.',
-            'email.unique' => 'Este correo ya está registrado.'
         ]);
 
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'role_id' => 1, // Valor por defecto para evitar errores de DB
+            'role_id' => 1,
         ]);
 
         $token = auth('api')->login($user);
@@ -153,6 +145,9 @@ class AuthController extends Controller
         ]);
     }
 
+    /**
+     * Actualizar Perfil (LA MAGIA DE LAS FOTOS)
+     */
     public function updateProfile(Request $request)
     {
         $user = auth('api')->user();
@@ -165,13 +160,17 @@ class AuthController extends Controller
         $user->email = $request->input('email', $user->email);
 
         if ($request->hasFile('profile_image')) {
-            if ($user->profile_image && !str_contains($user->profile_image, 'googleusercontent.com')) {
-                $oldPath = str_replace(asset('storage/'), '', $user->profile_image);
-                Storage::disk('public')->delete($oldPath);
-            }
+            // Conexión directa
+            $cl = new Cloudinary('cloudinary://221434432647777:88OjPz52kitHEJZNiPYGoGpthl8@dzdbewxmg');
+            
+            $upload = $cl->uploadApi()->upload($request->file('profile_image')->getRealPath(), [
+                'folder' => 'profiles',
+                'transformation' => [
+                    ['width' => 400, 'height' => 400, 'crop' => 'fill', 'gravity' => 'face']
+                ]
+            ]);
 
-            $path = $request->file('profile_image')->store('profiles', 'public');
-            $user->profile_image = asset('storage/' . $path);
+            $user->profile_image = $upload['secure_url'];
         }
 
         $user->save();
