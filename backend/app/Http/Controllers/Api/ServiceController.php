@@ -58,35 +58,37 @@ class ServiceController extends Controller
     /**
      * Crear un nuevo servicio con imagen
      */
-    public function store(Request $request)
+   public function store(Request $request)
 {
     try {
-        // 1. Log inicial para saber qué está llegando al servidor
-        \Log::info('Datos recibidos en store:', $request->all());
+        // 1. VERIFICACIÓN DE SEGURIDAD (Aquí es donde está el error)
+        $user = auth('api')->user(); // Intentamos obtener al usuario por el guard de JWT
 
-        // 2. Validación
+        if (!$user) {
+            return response()->json([
+                'message' => 'Error de autenticación',
+                'error' => 'No se pudo identificar al usuario. ¿El token es válido?'
+            ], 401);
+        }
+
+        // 2. VALIDACIÓN
         $validated = $request->validate([
             'title'       => 'required|string|max:255',
             'description' => 'required|string',
             'price'       => 'required|numeric|min:0',
             'category'    => 'required|string',
             'modality'    => 'required|in:online,onsite',
-            'image'       => 'required|image|mimes:jpeg,png,jpg,webp|max:10240',
+            'image'       => 'required|image|max:10240',
         ]);
 
-        if (!$request->hasFile('image')) {
-            return response()->json(['message' => 'No se detectó el archivo de imagen'], 422);
-        }
-
-        // 3. Cloudinary
+        // 3. CLOUDINARY
         $uploadedFile = $request->file('image');
         $upload = cloudinary()->upload($uploadedFile->getRealPath(), ['folder' => 'services']);
         $imageUrl = $upload->getSecurePath();
 
-        // 4. Creación
-        // Usamos auth()->id() que es más seguro para obtener el ID del usuario
+        // 4. CREACIÓN (Usando la variable $user que ya validamos)
         $service = Service::create([
-            'user_id'     => auth()->id() ?? $request->user()->id,
+            'user_id'     => $user->id, 
             'title'       => $validated['title'],
             'description' => $validated['description'],
             'price'       => $validated['price'],
@@ -98,20 +100,17 @@ class ServiceController extends Controller
         return response()->json($service, 201);
 
     } catch (\Illuminate\Validation\ValidationException $e) {
-        // Si la validación falla, esto te dirá qué campo falta
         return response()->json([
-            'message' => 'Error de validación',
+            'message' => 'Faltan datos obligatorios',
             'errors' => $e->errors()
         ], 422);
-
     } catch (\Throwable $e) {
-        // 🚨 ESTO MANDARÁ TODO EL DETALLE A TU CONSOLA (Network -> Response)
+        // ESTO APARECERÁ EN TU CONSOLA DE GOOGLE EN LA PESTAÑA 'RESPONSE'
         return response()->json([
-            'message' => 'Error crítico al crear el servicio',
+            'message' => 'Error al crear el servicio',
             'error'   => $e->getMessage(),
-            'file'    => $e->getFile(),
             'line'    => $e->getLine(),
-            'trace'   => explode("\n", $e->getTraceAsString())[0] // Solo la primera línea del rastro para no saturar
+            'file'    => $e->getFile()
         ], 500);
     }
 }
