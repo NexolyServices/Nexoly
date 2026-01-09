@@ -243,7 +243,7 @@ function formatPrice(v) {
   return `$${Number(v).toLocaleString('en-US', { minimumFractionDigits: 2 })}` 
 }
 
-async function doHire() {
+function doHire() {
   if (!auth.isAuthenticated) {
     ui.addInfo('Debes iniciar sesión para contratar este servicio');
     router.push({ name: 'Login', query: { redirect: route.fullPath } });
