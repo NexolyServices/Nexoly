@@ -243,13 +243,26 @@ function formatPrice(v) {
   return `$${Number(v).toLocaleString('en-US', { minimumFractionDigits: 2 })}` 
 }
 
-function doHire() {
+async function doHire() {
   if (!auth.isAuthenticated) {
-    ui.addError('Debes iniciar sesión para contratar')
-    router.push({ name: 'Login', query: { redirect: route.fullPath } })
-    return
+    ui.addInfo('Debes iniciar sesión para contratar este servicio');
+    router.push({ name: 'Login', query: { redirect: route.fullPath } });
+    return;
   }
-  router.push({ name: 'Cart' })
+
+  try {
+    // 1. Agregamos el servicio actual al carrito antes de redirigir
+    // Pasamos el objeto del servicio completo
+    await store.addToCart(service.value); 
+    
+    ui.addSuccess('Servicio añadido al carrito');
+    
+    // 2. Ahora sí, mandamos al usuario al carrito
+    router.push({ name: 'Cart' });
+  } catch (error) {
+    ui.addError('No se pudo añadir al carrito');
+    console.error(error);
+  }
 }
 
 async function reloadReviews() {

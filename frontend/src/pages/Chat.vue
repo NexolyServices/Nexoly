@@ -104,20 +104,23 @@ const meId = computed(() => {
 });
 
 const messages = ref([])
-const recipientName = ref('') // NUEVO: Para guardar el nombre del contacto
+const recipientName = ref('') 
 const text = ref('')
 const loading = ref(false)
 const messagesEl = ref(null)
 let poll = null
 
-// NUEVA FUNCIÓN: Obtener el nombre del contacto desde la lista de conversaciones
 async function fetchContactName() {
   try {
     const res = await servicesApi.getConversations();
-    const contacts = res?.data || res || [];
-    // Buscamos el contacto que coincida con el ID de la URL
-    const contact = contacts.find(c => Number(c.id) === userId);
-    if (contact) {
+    // Usamos la misma lógica de extracción de datos que en ChatList.vue
+    const rawData = res?.data || res || [];
+    const contacts = Array.isArray(rawData) ? rawData : [];
+    
+    // Forzamos comparación numérica para evitar errores de tipo
+    const contact = contacts.find(c => Number(c.id) === Number(userId));
+    
+    if (contact && contact.name) {
       recipientName.value = contact.name;
     } else {
       recipientName.value = `Usuario #${userId}`;
@@ -174,9 +177,9 @@ async function send() {
   }
 }
 
-onMounted(() => {
-  fetchContactName(); // 1. Traer el nombre
-  load();            // 2. Traer mensajes
+onMounted(async () => {
+  await fetchContactName(); // Esperamos a que busque el nombre primero
+  load();
   poll = setInterval(() => load(true), 2500)
 })
 
