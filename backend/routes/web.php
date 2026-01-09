@@ -1,7 +1,17 @@
+<?php
+
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Artisan; // <--- ESTA LÍNEA ES VITAL
+use Illuminate\Support\Facades\Schema;  // <--- ESTA TAMBIÉN PARA dropAllTables
+
+Route::get('/', function () {
+    return view('welcome');
+});
+
 Route::get('/limpieza-profunda-db-nexoly-2026', function () {
     try {
         // 1. Limpiamos cualquier caché de tablas
-        \Illuminate\Support\Facades\Schema::dropAllTables();
+        Schema::dropAllTables();
         
         // 2. Ejecutamos las migraciones desde cero absoluto
         Artisan::call('migrate', ['--force' => true]);
