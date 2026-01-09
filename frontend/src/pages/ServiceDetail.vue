@@ -178,7 +178,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ref, onMounted, computed } from 'vue'
 import { useServicesStore } from '../stores/services'
 import { useAuthStore } from '../stores/auth'
-import { useCartStore } from '../stores/cart' // IMPORTANTE: Agregado el store de carrito
+import { useCartStore } from '../stores/cart' 
 import { useUiStore } from '../stores/ui'
 import RatingStars from '../components/RatingStars.vue'
 import ReviewList from '../components/ReviewList.vue'
@@ -187,7 +187,7 @@ import ReviewForm from '../components/ReviewForm.vue'
 const route = useRoute()
 const router = useRouter()
 const store = useServicesStore()
-const cartStore = useCartStore() // Inicializamos el store de carrito
+const cartStore = useCartStore()
 const auth = useAuthStore()
 const ui = useUiStore()
 
@@ -196,11 +196,11 @@ const loading = ref(false)
 const reviews = ref({ data: [] })
 const canReview = ref(false)
 
-// LÓGICA DE PROPIETARIO
+// LÓGICA DE PROPIETARIO MEJORADA
 const isOwner = computed(() => {
   if (!auth.isAuthenticated || !service.value) return false
   
-  // Si eres admin (role 3), ignoramos el bloqueo de propietario para que puedas probar todo
+  // Si eres admin (role 3), permitimos ver botones de compra para testing
   if (Number(auth.user?.role_id) === 3) return false;
 
   const myId = Number(auth.user?.id)
@@ -257,7 +257,7 @@ async function doHire() {
   }
 
   try {
-    // Usamos el cartStore que es donde reside la lógica de añadir productos
+    // Usamos el cartStore importado correctamente
     await cartStore.addToCart(service.value); 
     ui.addSuccess('Servicio añadido al carrito');
     router.push({ name: 'Cart' });
@@ -291,8 +291,8 @@ function contactProvider() {
 .animate-fade-in { animation: fadeIn 0.8s ease-out forwards; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-/* Glow effect para la barra de confiabilidad */
+/* Glow effect dinámico para la barra */
 .shadow-trust {
-  box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);
+  box-shadow: 0 0 20px rgba(var(--color-rgb), 0.2);
 }
 </style>
