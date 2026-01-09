@@ -129,7 +129,7 @@ const finishSetup = async () => {
       // REFUERZO 2: Esperar un poco más para que el Router Guard detecte el cambio
       // y usar window.location para resetear el ciclo de vida del router
       setTimeout(() => {
-        const targetPath = String(updatedUser.role_id) === '2' ? '/dashboard' : '/services';
+        const targetPath = '/services';
         console.log("🚀 [CompleteProfile] Redirigiendo a:", targetPath);
         window.location.href = targetPath; 
       }, 800); 
