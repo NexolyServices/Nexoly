@@ -9,7 +9,7 @@
     </router-link>
 
     <div class="flex flex-col items-center gap-4 mt-8 p-3 rounded-full bg-slate-900/40 backdrop-blur-md border border-white/5 shadow-2xl">
-      <a href="https://wa.me/521234567890?text=Hola!%20Vengo%20desde%20Nexoly%20y%20necesito%20ayuda." 
+      <a href="https://wa.me/5628444113?text=Hola!%20Vengo%20desde%20Nexoly%20y%20necesito%20ayuda." 
          target="_blank" 
          rel="noopener noreferrer"
          class="w-10 h-10 flex items-center justify-center rounded-full bg-slate-800 text-slate-400 hover:text-[#25D366] hover:bg-white/10 transition-all group relative">
@@ -19,7 +19,7 @@
         <span class="absolute left-14 bg-slate-900 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap border border-white/10 shadow-xl">WhatsApp</span>
       </a>
 
-      <a href="https://instagram.com/tu_usuario" 
+      <a href="https://instagram.com/nexoly.services" 
          target="_blank" 
          rel="noopener noreferrer"
          class="w-10 h-10 flex items-center justify-center rounded-full bg-slate-800 text-slate-400 hover:text-white hover:bg-gradient-to-tr hover:from-[#f9ce34] hover:via-[#ee2a7b] hover:to-[#6228d7] transition-all group relative">
@@ -91,8 +91,8 @@
             
             <router-link to="/profile" class="w-8 h-8 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center overflow-hidden hover:border-indigo-500 transition-all">
               <img 
-                v-if="auth.user?.image_url" 
-                :src="auth.user.image_url" 
+                v-if="auth.user?.profile_image" 
+                :src="auth.user.profile_image" 
                 class="w-full h-full object-cover"
                 alt="Perfil"
               />
