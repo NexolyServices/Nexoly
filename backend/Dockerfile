@@ -16,19 +16,17 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www
 COPY . .
 
-# Actualizar solo la librería necesaria
-RUN composer update google/apiclient --no-dev --optimize-autoloader --no-interaction
+# CAMBIO CRÍTICO: Instalamos dependencias evitando que Laravel ejecute scripts de arranque (evita el error de filesystem)
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
 
 # Permisos para Laravel
 RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
 RUN chmod -R 775 /var/www/storage /var/www/bootstrap/cache
 
-# ... (deja todo lo de arriba como lo tienes hasta el EXPOSE 10000) ...
-
 EXPOSE 10000
 
-# Comando final corregido y sin errores de texto:
-CMD php artisan cache:clear && \
-    php artisan config:cache && \
+# Comando final optimizado: Limpiamos caché y lanzamos el servidor
+CMD php artisan config:clear && \
+    php artisan cache:clear && \
     php artisan migrate --force && \
-    php -S 0.0.0.0:10000 -t public public/index.php
+    php -S 0.0.0.0:10000 -t public
