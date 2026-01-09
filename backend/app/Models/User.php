@@ -7,25 +7,42 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
-use Tymon\JWTAuth\Contracts\JWTSubject; // <--- 1. IMPORTAR ESTO
+use Tymon\JWTAuth\Contracts\JWTSubject;
 
-class User extends Authenticatable implements JWTSubject // <--- 2. AGREGAR EL "implements"
+class User extends Authenticatable implements JWTSubject
 {
     use HasApiTokens, HasFactory, Notifiable;
 
+    /**
+     * The attributes that are mass assignable.
+     * Estos campos son los que Laravel permite guardar en la DB.
+     */
     protected $fillable = [
         'name',
         'email',
         'password',
         'role_id',
         'is_suspended',
+        // --- NUEVOS CAMPOS AGREGADOS ---
+        'country',
+        'state',
+        'city',
+        'business_name',
+        'google_id',
+        'avatar',
     ];
 
+    /**
+     * The attributes that should be hidden for serialization.
+     */
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
+    /**
+     * Get the attributes that should be cast.
+     */
     protected function casts(): array
     {
         return [
@@ -34,7 +51,7 @@ class User extends Authenticatable implements JWTSubject // <--- 2. AGREGAR EL "
         ];
     }
 
-    // --- 3. AGREGAR ESTOS DOS MÉTODOS OBLIGATORIOS PARA JWT ---
+    // --- MÉTODOS OBLIGATORIOS PARA JWT ---
 
     public function getJWTIdentifier()
     {
@@ -43,24 +60,42 @@ class User extends Authenticatable implements JWTSubject // <--- 2. AGREGAR EL "
 
     public function getJWTCustomClaims()
     {
+        /**
+         * Puedes agregar datos extra al token aquí si quieres, 
+         * por ahora lo dejamos vacío.
+         */
         return [];
     }
-    // Relación: Un usuario puede tener muchos servicios
-public function services()
-{
-    return $this->hasMany(Service::class);
-}
 
+    // --- RELACIONES ---
+
+    /**
+     * Un usuario puede tener muchos servicios (como proveedor)
+     */
+    public function services()
+    {
+        return $this->hasMany(Service::class);
+    }
+
+    /**
+     * Un usuario puede dejar muchas reseñas
+     */
     public function reviews()
     {
         return $this->hasMany(\App\Models\Review::class);
     }
 
+    /**
+     * Mensajes enviados por el usuario
+     */
     public function sentMessages()
     {
         return $this->hasMany(\App\Models\Message::class, 'sender_id');
     }
 
+    /**
+     * Mensajes recibidos por el usuario
+     */
     public function receivedMessages()
     {
         return $this->hasMany(\App\Models\Message::class, 'receiver_id');

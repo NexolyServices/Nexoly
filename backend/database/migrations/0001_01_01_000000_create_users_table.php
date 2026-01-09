@@ -16,7 +16,19 @@ return new class extends Migration
             $table->string('name');
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
-            $table->string('password');
+            $table->string('password')->nullable(); // Nullable para que Google Auth funcione
+
+            // --- CAMPOS DE PERFIL NEXOLY (TOTALMENTE OPCIONALES) ---
+            $table->string('country')->nullable();
+            $table->string('state')->nullable();
+            $table->string('city')->nullable();
+            $table->string('business_name')->nullable();
+            $table->integer('role_id')->default(1); // 1: Cliente por defecto
+            
+            // --- CAMPOS PARA LOGIN SOCIAL ---
+            $table->string('google_id')->nullable();
+            $table->string('avatar')->nullable();
+
             $table->rememberToken();
             $table->timestamps();
         });

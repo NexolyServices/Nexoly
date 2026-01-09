@@ -112,49 +112,37 @@ router.beforeEach((to, from, next) => {
   try {
     user = userRaw ? JSON.parse(userRaw) : null
   } catch (e) {
-    console.error("Error parsing user from localStorage", e)
+    user = null
   }
 
-  // 1. Proteger rutas que requieren autenticación
+  // 1. 🔐 PROTEGER RUTAS PRIVADAS
+  // Si la ruta requiere auth y no hay token, mandamos al login
   if (to.meta.requiresAuth && !token) {
     return next({ name: 'Login', query: { redirect: to.fullPath } })
   }
 
-  // 2. 🚨 CONTROL DE FLUJO DE PERFIL (SOLUCIÓN DEFINITIVA)
-  // Verificamos ciudad para asegurar que el perfil esté completo
-  const hasCity = user?.city && String(user.city).trim() !== "";
-  const isProfileIncomplete = token && user && !hasCity;
-
-  // Redirigir a CompleteProfile SOLO si el perfil está incompleto Y la ruta destino es protegida
-  if (
-    isProfileIncomplete && 
-    to.meta.requiresAuth && 
-    to.name !== 'CompleteProfile'
-  ) {
-    console.warn("📍 [Router] Perfil incompleto. Redirigiendo a completar ubicación...");
-    return next({ name: 'CompleteProfile' });
-  }
-
-  // Si ya tiene ciudad y está logueado, prohibido volver a CompleteProfile
-  if (token && hasCity && to.name === 'CompleteProfile') {
-    return next({ name: 'Dashboard' });
-  }
-
-  // 3. Verificación de Roles
+  // 2. 👤 CONTROL DE ROLES
   const userRole = user?.role_id || user?.role
 
-  // Rol de Proveedor (ID 2)
+  // Proteger rutas de Proveedor (ID 2)
   if (to.meta.requiresProvider) {
     const isProvider = String(userRole) === '2' || userRole === 'provider'
-    if (!isProvider) return next({ name: 'Dashboard' })
+    if (!isProvider) {
+      return next({ name: 'Dashboard' })
+    }
   }
 
-  // Rol de Administrador (ID 3)
+  // Proteger rutas de Administrador (ID 3)
   if (to.meta.requiresAdmin) {
     const isAdmin = String(userRole) === '3' || userRole === 'admin'
-    if (!isAdmin) return next({ name: 'Dashboard' })
+    if (!isAdmin) {
+      return next({ name: 'Dashboard' })
+    }
   }
 
+  // 🚀 FLUJO LIBRE
+  // No hay validaciones de ciudad. No hay redirecciones forzadas a CompleteProfile.
+  // El usuario puede navegar libremente si tiene token.
   next()
 })
 
