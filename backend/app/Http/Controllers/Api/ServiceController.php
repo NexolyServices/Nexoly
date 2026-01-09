@@ -98,7 +98,7 @@ class ServiceController extends Controller
                 'price'       => $validated['price'],
                 'category'    => $validated['category'],
                 'modality'    => $validated['modality'],
-                'image'       => $imageUrl,
+                'image_url'   => $imageUrl,
             ]);
 
             return response()->json($service, 201);
@@ -148,7 +148,7 @@ class ServiceController extends Controller
                 'folder' => 'services'
             ])['secure_url'];
             
-            $validated['image'] = $uploadedFileUrl;
+            $validated['image_url'] = $uploadedFileUrl;
         }
 
         $service->update($validated);
