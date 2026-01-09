@@ -1,29 +1,19 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Artisan; // <--- ESTA LÍNEA ES VITAL
-use Illuminate\Support\Facades\Schema;  // <--- ESTA TAMBIÉN PARA dropAllTables
+use Illuminate\Support\Facades\Artisan;
 
 Route::get('/', function () {
     return view('welcome');
 });
 
-Route::get('/limpieza-profunda-db-nexoly-2026', function () {
+// ESTA ES LA ÚNICA QUE NECESITAS AHORA
+Route::get('/conectar-fotos', function () {
     try {
-        // 1. Limpiamos cualquier caché de tablas
-        Schema::dropAllTables();
-        
-        // 2. Ejecutamos las migraciones desde cero absoluto
-        Artisan::call('migrate', ['--force' => true]);
-        
-        return response()->json([
-            'status' => 'success',
-            'message' => '✅ Base de datos reconstruida desde cero. Tablas limpias y nuevas columnas listas.'
-        ]);
+        // Esto NO borra la base de datos, solo conecta la carpeta de imágenes
+        Artisan::call('storage:link');
+        return "✅ Enlace de fotos creado. Ahora intenta resubir tus fotos.";
     } catch (\Exception $e) {
-        return response()->json([
-            'status' => 'error',
-            'error' => $e->getMessage()
-        ], 500);
+        return "❌ Error: " . $e->getMessage();
     }
 });
