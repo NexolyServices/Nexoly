@@ -55,30 +55,39 @@ class ServiceController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'title'       => 'required|string|max:255',
-            'description' => 'required|string',
-            'price'       => 'required|numeric|min:0',
-            'category'    => 'required|string',
-            'modality'    => 'required|in:online,onsite',
-            'image'       => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240',
-        ]);
+        try {
+            $validated = $request->validate([
+                'title'       => 'required|string|max:255',
+                'description' => 'required|string',
+                'price'       => 'required|numeric|min:0',
+                'category'    => 'required|string',
+                'modality'    => 'required|in:online,onsite',
+                'image'       => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240',
+            ]);
 
-        if ($request->hasFile('image')) {
-            // SUBIDA A CLOUDINARY: Se sube el archivo y obtenemos la URL segura permanente
-            $uploadedFileUrl = Cloudinary::upload($request->file('image')->getRealPath(), [
-                'folder' => 'services'
-            ])->getSecurePath();
-            
-            $validated['image_url'] = $uploadedFileUrl;
+            // Subida a Cloudinary
+            if ($request->hasFile('image')) {
+                $uploadedFileUrl = Cloudinary::upload($request->file('image')->getRealPath(), [
+                    'folder' => 'services'
+                ])->getSecurePath();
+                
+                $validated['image_url'] = $uploadedFileUrl;
+            }
+
+            // Crear servicio asociado al usuario autenticado
+            $service = $request->user()->services()->create($validated);
+
+            return response()->json([
+                'message' => 'Servicio creado con éxito',
+                'service' => $service->load('user') // Cargamos relación para evitar errores null en frontend
+            ], 201);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error al crear el servicio',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        $service = $request->user()->services()->create($validated);
-
-        return response()->json([
-            'message' => 'Servicio creado con éxito',
-            'service' => $service
-        ], 201);
     }
 
     public function update(Request $request, $id)
@@ -103,8 +112,6 @@ class ServiceController extends Controller
         ]);
 
         if ($request->hasFile('image')) {
-            // Nota: En Cloudinary gratuito no es estrictamente necesario borrar la anterior manualmente para que funcione,
-            // pero aquí subimos la nueva y actualizamos la URL.
             $uploadedFileUrl = Cloudinary::upload($request->file('image')->getRealPath(), [
                 'folder' => 'services'
             ])->getSecurePath();
@@ -116,7 +123,7 @@ class ServiceController extends Controller
 
         return response()->json([
             'message' => 'Servicio actualizado con éxito',
-            'service' => $service
+            'service' => $service->load('user')
         ]);
     }
 
@@ -137,7 +144,6 @@ class ServiceController extends Controller
         if (!$service) return response()->json(['message' => 'Servicio no encontrado'], 404);
         if ($service->user_id !== $request->user()->id) return response()->json(['message' => 'No autorizado'], 403);
 
-        // Al eliminar de la DB, la imagen se queda en Cloudinary (puedes borrarla luego desde su panel)
         $service->delete();
         return response()->json(['message' => 'Servicio eliminado con éxito']);
     }
