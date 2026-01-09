@@ -59,10 +59,10 @@ class ServiceController extends Controller
 
         // DEBUG: ver si llega archivo
         if (!$request->hasFile('image')) {
-            logger()->error('Imagen NO llegó al backend', [
-                'files' => $request->allFiles(),
-                'data' => $request->all()
-            ]);
+            logger()->info('Cloudinary ENV', [
+    'cloud' => env('CLOUDINARY_CLOUD_NAME'),
+    'key'   => env('CLOUDINARY_API_KEY'),
+]);
         }
 
         $validated = $request->validate([
