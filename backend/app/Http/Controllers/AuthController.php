@@ -18,9 +18,7 @@ class AuthController extends Controller
     public function googleLogin(Request $request)
     {
         $token = $request->input('token');
-        
         $client = new Google_Client(['client_id' => env('VITE_GOOGLE_CLIENT_ID')]); 
-        
         $payload = $client->verifyIdToken($token);
         
         if (!$payload) {
@@ -35,20 +33,21 @@ class AuthController extends Controller
         $isNewUser = false;
 
         if (!$user) {
-            // REGISTRO NUEVO: No asignamos role_id ni ubicación aquí
-            // para que el frontend detecte que falta información.
+            // REGISTRO NUEVO: 
+            // Asignamos role_id => 1 para evitar el error "Not Null Violation" en la DB
+            // Pero marcamos is_new_user como true para que el frontend lo obligue a completar perfil.
             $user = User::create([
                 'name' => $name,
                 'email' => $email,
                 'password' => Hash::make(Str::random(24)), 
                 'profile_image' => $picture,
-                'role_id' => null, // Lo dejamos nulo para forzar completar perfil
+                'role_id' => 1, 
             ]);
             $isNewUser = true;
         } else {
-            // USUARIO EXISTENTE: Verificamos si realmente completó sus datos antes
-            // Si le falta la ciudad o el rol, lo tratamos como "nuevo" para que complete el perfil
-            if (empty($user->city) || empty($user->role_id)) {
+            // USUARIO EXISTENTE:
+            // Si le falta la ciudad o el negocio, lo tratamos como nuevo para completar el flujo.
+            if (empty($user->city) || empty($user->country)) {
                 $isNewUser = true;
             }
         }
@@ -78,8 +77,8 @@ class AuthController extends Controller
 
         $user = auth('api')->user();
         
-        // Verificación de perfil completo en login tradicional también
-        $isNewUser = (empty($user->city) || empty($user->role_id));
+        // Verificamos si el perfil está incompleto (falta ciudad o país)
+        $isNewUser = (empty($user->city) || empty($user->country));
 
         return response()->json([
             'access_token' => $token,
@@ -107,7 +106,7 @@ class AuthController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'role_id' => null, // Obligamos a pasar por complete-profile
+            'role_id' => 1, // Valor por defecto para evitar errores de DB
         ]);
 
         $token = auth('api')->login($user);
@@ -150,7 +149,7 @@ class AuthController extends Controller
         return response()->json([
             'message' => 'Perfil configurado con éxito',
             'user' => $user,
-            'is_new_user' => false // Ya no es nuevo
+            'is_new_user' => false 
         ]);
     }
 
@@ -166,7 +165,6 @@ class AuthController extends Controller
         $user->email = $request->input('email', $user->email);
 
         if ($request->hasFile('profile_image')) {
-            // Lógica de borrado si no es de Google
             if ($user->profile_image && !str_contains($user->profile_image, 'googleusercontent.com')) {
                 $oldPath = str_replace(asset('storage/'), '', $user->profile_image);
                 Storage::disk('public')->delete($oldPath);
