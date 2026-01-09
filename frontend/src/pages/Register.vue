@@ -81,22 +81,30 @@ const handleGoogleSuccess = async (response) => {
   serverError.value = null
   
   try {
-    // 1. Llamada al store para autenticar con Google
+    // 1. Autenticación con el backend
     const res = await auth.loginWithGoogle(response.credential)
     
-    ui.addSuccess('¡Identidad verificada!')
+    ui.addSuccess('¡Sesión iniciada!')
+
+    // 2. Validación Robusta de Perfil Completo
+    // Revisamos si el usuario tiene los datos mínimos que se piden en 'complete-profile'
+    const user = res.user || auth.user;
     
-    // 2. Lógica de flujo inteligente:
-    // Si el backend marca 'is_new_user' o si el usuario no tiene rol asignado
-    if (res.is_new_user || !res.user.role_id) {
+    // Si es nuevo usuario O no tiene municipio O no tiene rol asignado
+    const isIncomplete = res.is_new_user === true || !user.municipality_id || !user.role_id;
+
+    if (isIncomplete) {
+      console.log('Perfil incompleto, redirigiendo a completar datos...');
       router.push('/complete-profile')
     } else {
+      console.log('Usuario completo, enviando al catálogo...');
       router.push('/services')
     }
     
   } catch (err) {
-    serverError.value = 'Error en el servidor'
-    ui.addError('No se pudo completar el registro')
+    console.error('Error en registro:', err)
+    serverError.value = 'Error al procesar tu cuenta'
+    ui.addError('No se pudo completar el acceso')
   } finally {
     loading.value = false
   }

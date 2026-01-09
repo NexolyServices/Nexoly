@@ -53,62 +53,52 @@ class ServiceController extends Controller
         }
     }
 
-   public function store(Request $request)
+  public function store(Request $request)
 {
     try {
-
-        // DEBUG: ver si llega archivo
         if (!$request->hasFile('image')) {
-            logger()->info('Cloudinary ENV', [
-    'cloud' => env('CLOUDINARY_CLOUD_NAME'),
-    'key'   => env('CLOUDINARY_API_KEY'),
+            return response()->json([
+                'message' => 'No se recibió la imagen'
+            ], 422);
+        }
+
+        $uploadedFile = $request->file('image');
+
+        $upload = cloudinary()->upload(
+            $uploadedFile->getRealPath(),
+            [
+                'folder' => 'services'
+            ]
+        );
+
+        $imageUrl = $upload->getSecurePath();
+
+        // guarda tu servicio normalmente
+        $service = Service::create([
+    'user_id'     => $request->user()->id,
+    'title'       => $request->title,
+    'description' => $request->description,
+    'price'       => $request->price,
+    'category'    => $request->category,
+    'modality'    => $request->modality,
+    'image'       => $imageUrl,
 ]);
-        }
 
-        $validated = $request->validate([
-            'title'       => 'required|string|max:255',
-            'description' => 'required|string',
-            'price'       => 'required|numeric|min:0',
-            'category'    => 'required|string',
-            'modality'    => 'required|in:online,onsite',
-            'image'       => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240',
-        ]);
-
-        // Cloudinary upload
-        if ($request->hasFile('image')) {
-            try {
-                $uploadedFileUrl = Cloudinary::upload(
-                    $request->file('image')->getRealPath(),
-                    [
-                        'folder' => 'services',
-                        'resource_type' => 'image'
-                    ]
-                )->getSecurePath();
-
-                $validated['image_url'] = $uploadedFileUrl;
-
-            } catch (\Throwable $e) {
-                return response()->json([
-                    'message' => 'Error al subir imagen a Cloudinary',
-                    'cloudinary_error' => $e->getMessage()
-                ], 500);
-            }
-        }
-
-        $service = $request->user()->services()->create($validated);
-
-        return response()->json([
-            'message' => 'Servicio creado con éxito',
-            'service' => $service
-        ], 201);
+        return response()->json($service, 201);
 
     } catch (\Throwable $e) {
+        \Log::error('Error Cloudinary:', [
+            'message' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+
         return response()->json([
-            'message' => 'Error general al crear el servicio',
+            'message' => 'Error al subir imagen a Cloudinary',
             'error' => $e->getMessage()
         ], 500);
     }
 }
+
 
     public function update(Request $request, $id)
     {

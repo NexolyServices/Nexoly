@@ -116,33 +116,35 @@ router.beforeEach((to, from, next) => {
   }
 
   // 1. 🔐 PROTEGER RUTAS PRIVADAS
-  // Si la ruta requiere auth y no hay token, mandamos al login
   if (to.meta.requiresAuth && !token) {
     return next({ name: 'Login', query: { redirect: to.fullPath } })
   }
 
-  // 2. 👤 CONTROL DE ROLES
+  // 2. 🛡️ VERIFICAR PERFIL COMPLETO (Súper Importante)
+  // Si tiene token pero no tiene ciudad o rol, y no está ya en la página de completar...
+  if (token && user) {
+    const isProfileIncomplete = !user.city || !user.role_id;
+    
+    // Si el perfil está incompleto y trata de ir a cualquier lado que no sea /complete-profile
+    if (isProfileIncomplete && to.path !== '/complete-profile') {
+      console.warn('Acceso restringido: Perfil incompleto detectado.');
+      return next({ name: 'CompleteProfile' });
+    }
+  }
+
+  // 3. 👤 CONTROL DE ROLES
   const userRole = user?.role_id || user?.role
 
-  // Proteger rutas de Proveedor (ID 2)
   if (to.meta.requiresProvider) {
     const isProvider = String(userRole) === '2' || userRole === 'provider'
-    if (!isProvider) {
-      return next({ name: 'Dashboard' })
-    }
+    if (!isProvider) return next({ name: 'Dashboard' })
   }
 
-  // Proteger rutas de Administrador (ID 3)
   if (to.meta.requiresAdmin) {
     const isAdmin = String(userRole) === '3' || userRole === 'admin'
-    if (!isAdmin) {
-      return next({ name: 'Dashboard' })
-    }
+    if (!isAdmin) return next({ name: 'Dashboard' })
   }
 
-  // 🚀 FLUJO LIBRE
-  // No hay validaciones de ciudad. No hay redirecciones forzadas a CompleteProfile.
-  // El usuario puede navegar libremente si tiene token.
   next()
 })
 
