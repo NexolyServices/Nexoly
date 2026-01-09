@@ -8,6 +8,7 @@ use App\Models\Contract;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
 
 class ServiceController extends Controller
 {
@@ -64,8 +65,12 @@ class ServiceController extends Controller
         ]);
 
         if ($request->hasFile('image')) {
-            $path = $request->file('image')->store('services', 'public');
-            $validated['image_url'] = asset('storage/' . $path);
+            // SUBIDA A CLOUDINARY: Se sube el archivo y obtenemos la URL segura permanente
+            $uploadedFileUrl = Cloudinary::upload($request->file('image')->getRealPath(), [
+                'folder' => 'services'
+            ])->getSecurePath();
+            
+            $validated['image_url'] = $uploadedFileUrl;
         }
 
         $service = $request->user()->services()->create($validated);
@@ -98,13 +103,13 @@ class ServiceController extends Controller
         ]);
 
         if ($request->hasFile('image')) {
-            if ($service->image_url) {
-                $oldPath = str_replace(asset('storage/'), '', $service->image_url);
-                Storage::disk('public')->delete($oldPath);
-            }
-
-            $path = $request->file('image')->store('services', 'public');
-            $validated['image_url'] = asset('storage/' . $path);
+            // Nota: En Cloudinary gratuito no es estrictamente necesario borrar la anterior manualmente para que funcione,
+            // pero aquí subimos la nueva y actualizamos la URL.
+            $uploadedFileUrl = Cloudinary::upload($request->file('image')->getRealPath(), [
+                'folder' => 'services'
+            ])->getSecurePath();
+            
+            $validated['image_url'] = $uploadedFileUrl;
         }
 
         $service->update($validated);
@@ -132,11 +137,7 @@ class ServiceController extends Controller
         if (!$service) return response()->json(['message' => 'Servicio no encontrado'], 404);
         if ($service->user_id !== $request->user()->id) return response()->json(['message' => 'No autorizado'], 403);
 
-        if ($service->image_url) {
-            $oldPath = str_replace(asset('storage/'), '', $service->image_url);
-            Storage::disk('public')->delete($oldPath);
-        }
-
+        // Al eliminar de la DB, la imagen se queda en Cloudinary (puedes borrarla luego desde su panel)
         $service->delete();
         return response()->json(['message' => 'Servicio eliminado con éxito']);
     }
@@ -148,19 +149,16 @@ class ServiceController extends Controller
         ]);
     }
 
-    // --- NUEVOS MÉTODOS DE CONTRATACIÓN ---
-
     public function createContract(Request $request, $id)
     {
         $service = Service::findOrFail($id);
 
-        // No permitir auto-contratación
         if ($service->user_id === $request->user()->id) {
             return response()->json(['message' => 'No puedes contratar tu propio servicio'], 400);
         }
 
         $contract = Contract::create([
-            'user_id' => $request->user()->id, // El cliente
+            'user_id' => $request->user()->id,
             'service_id' => $service->id,
             'price' => $service->price,
             'status' => 'pending'
@@ -174,7 +172,6 @@ class ServiceController extends Controller
 
     public function userContracts(Request $request)
     {
-        // Compras: Contratos realizados por el usuario logueado
         $contracts = Contract::where('user_id', $request->user()->id)
             ->with(['service.user'])
             ->latest()
@@ -185,11 +182,10 @@ class ServiceController extends Controller
 
     public function userSales(Request $request)
     {
-        // Ventas: Contratos donde el dueño del servicio es el usuario logueado
         $sales = Contract::whereHas('service', function ($query) use ($request) {
             $query->where('user_id', $request->user()->id);
         })
-        ->with(['service', 'user']) // 'user' es el cliente que compró
+        ->with(['service', 'user'])
         ->latest()
         ->get();
 

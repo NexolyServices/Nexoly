@@ -29,10 +29,14 @@ class Service extends Model
      */
     public function getReliabilityScoreAttribute()
     {
+        // Usamos relationship loading para evitar errores si no están cargadas
         $reviews = $this->reviews;
-        $total = $reviews->count();
+        
+        if (!$reviews || $reviews->count() === 0) {
+            return 100; // Vendedores nuevos empiezan con confianza plena
+        }
 
-        if ($total === 0) return 100; // Vendedores nuevos empiezan con confianza plena
+        $total = $reviews->count();
 
         // 1. Base por Estrellas (Máximo 70 puntos)
         $avgStars = $reviews->avg('rating');
@@ -41,24 +45,35 @@ class Service extends Model
         // 2. Bonus por Atributos Positivos (Máximo 30 puntos)
         // Analizamos cuántas reseñas tienen el array de atributos con contenido
         $positiveReviews = $reviews->filter(function($review) {
-            return is_array($review->attributes) && count($review->attributes) > 0;
+            // Verificamos que sea un array o un objeto decodificable
+            $attrs = is_string($review->attributes) ? json_decode($review->attributes, true) : $review->attributes;
+            return is_array($attrs) && count($attrs) > 0;
         })->count();
         
         $attributeScore = ($positiveReviews / $total) * 30;
 
-        return round($starScore + $attributeScore);
+        return (int) round($starScore + $attributeScore);
     }
 
+    /**
+     * Relación con el Usuario (Dueño del servicio)
+     */
     public function user()
     {
         return $this->belongsTo(User::class);
     }
 
+    /**
+     * Relación con las Reseñas
+     */
     public function reviews()
     {
         return $this->hasMany(\App\Models\Review::class);
     }
 
+    /**
+     * Promedio de Rating
+     */
     public function averageRating()
     {
         return $this->reviews()->avg('rating');
