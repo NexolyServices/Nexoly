@@ -53,42 +53,49 @@ class ServiceController extends Controller
         }
     }
 
-    public function store(Request $request)
-    {
-        try {
-            $validated = $request->validate([
-                'title'       => 'required|string|max:255',
-                'description' => 'required|string',
-                'price'       => 'required|numeric|min:0',
-                'category'    => 'required|string',
-                'modality'    => 'required|in:online,onsite',
-                'image'       => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240',
-            ]);
+   public function store(Request $request)
+{
+    try {
 
-            // Subida a Cloudinary
-            if ($request->hasFile('image')) {
-                $uploadedFileUrl = Cloudinary::upload($request->file('image')->getRealPath(), [
-                    'folder' => 'services'
-                ])->getSecurePath();
-                
-                $validated['image_url'] = $uploadedFileUrl;
-            }
-
-            // Crear servicio asociado al usuario autenticado
-            $service = $request->user()->services()->create($validated);
-
+        if (!$request->hasFile('image')) {
             return response()->json([
-                'message' => 'Servicio creado con éxito',
-                'service' => $service->load('user') // Cargamos relación para evitar errores null en frontend
-            ], 201);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Error al crear el servicio',
-                'error' => $e->getMessage()
-            ], 500);
+                'error' => 'La imagen NO está llegando al backend',
+                'files' => $request->allFiles(),
+                'data' => $request->all()
+            ], 422);
         }
+
+        $validated = $request->validate([
+            'title'       => 'required|string|max:255',
+            'description' => 'required|string',
+            'price'       => 'required|numeric|min:0',
+            'category'    => 'required|string',
+            'modality'    => 'required|in:online,onsite',
+            'image'       => 'required|image|mimes:jpeg,png,jpg,webp|max:10240',
+        ]);
+
+        $uploadedFileUrl = Cloudinary::upload(
+            $request->file('image')->getRealPath(),
+            ['folder' => 'services']
+        )->getSecurePath();
+
+        $validated['image_url'] = $uploadedFileUrl;
+
+        $service = $request->user()->services()->create($validated);
+
+        return response()->json([
+            'message' => 'Servicio creado con éxito',
+            'service' => $service
+        ], 201);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'message' => 'Error al crear el servicio',
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ], 500);
     }
+}
 
     public function update(Request $request, $id)
     {
