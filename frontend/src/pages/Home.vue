@@ -11,7 +11,7 @@
           Nexoly
         </h1>
         <p class="mt-6 text-slate-400 max-w-xl mx-auto font-medium text-lg leading-relaxed">
-          Encuentra talento experto, servicios locales por GPS y soluciones digitales en un solo lugar.
+          Encuentra talento experto, servicios locales y soluciones digitales en un solo lugar.
         </p>
       </div>
 
@@ -25,59 +25,7 @@
       </div>
     </section>
 
-    <section class="max-w-7xl mx-auto px-6 py-12">
-      <div class="flex items-end justify-between mb-10">
-        <div>
-          <h2 class="text-3xl font-black uppercase italic tracking-tighter">
-            Servicios <span class="text-emerald-400">Cerca de ti</span>
-          </h2>
-          <div class="flex items-center gap-2 mt-2">
-            <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-            <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-              {{ locationStatus }}
-            </p>
-          </div>
-        </div>
-        <router-link to="/services" class="text-[10px] font-black uppercase tracking-widest text-indigo-400 hover:text-white transition-colors border-b border-indigo-500/20 pb-1">
-          Ver todo el mapa →
-        </router-link>
-      </div>
-
-      <div v-if="loading" class="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <div v-for="i in 3" :key="i" class="h-80 bg-slate-900/50 rounded-[2rem] animate-pulse border border-white/5"></div>
-      </div>
-
-      <div v-else-if="nearbyServices.length > 0" class="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <div v-for="item in nearbyServices" :key="item.id" 
-             class="group bg-slate-900/40 backdrop-blur-xl border border-white/5 rounded-[2.5rem] p-6 hover:border-emerald-500/30 transition-all duration-500 hover:translate-y-[-8px]">
-          
-          <div class="relative h-48 mb-6 overflow-hidden rounded-[1.8rem]">
-            <img :src="item.image_url || 'https://via.placeholder.com/400'" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-            <div class="absolute top-4 right-4 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
-              <span class="text-[10px] font-black text-emerald-400">📍 {{ item.distance.toFixed(1) }} km</span>
-            </div>
-          </div>
-
-          <h3 class="text-xl font-black mb-2 truncate group-hover:text-emerald-400 transition-colors">{{ item.title }}</h3>
-          <p class="text-slate-500 text-sm line-clamp-2 mb-6 font-medium">{{ item.description }}</p>
-          
-          <div class="flex items-center justify-between">
-            <span class="text-2xl font-black text-white">${{ item.price }}</span>
-            <button class="p-4 bg-white/5 hover:bg-emerald-500 rounded-2xl text-white transition-all group-hover:scale-110">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div v-else class="text-center py-20 bg-slate-900/20 rounded-[3rem] border border-dashed border-white/5">
-        <p class="text-slate-500 font-black uppercase text-xs tracking-widest">No hay servicios presenciales en tu zona todavía.</p>
-        <router-link to="/services" class="text-indigo-400 text-[10px] font-black mt-4 block underline">Explorar servicios remotos</router-link>
-      </div>
-    </section>
-  </div>
+    </div>
 </template>
 
 <script setup>
@@ -91,6 +39,7 @@ const allServices = ref([])
 const userCoords = ref(null)
 const locationStatus = ref('Solicitando acceso GPS...')
 
+// Mantenemos la lógica de cálculo por si la necesitas en otras partes o analytics
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
   const R = 6371 
   const dLat = (lat2 - lat1) * Math.PI / 180
@@ -107,7 +56,6 @@ const fetchServices = async () => {
     const apiUrl = import.meta.env.VITE_API_URL || 'https://nexoly.onrender.com';
     const response = await axios.get(`${apiUrl}/api/services`);
     
-    // Extraemos el array de servicios considerando la paginación de Laravel
     if (response.data && response.data.data) {
       allServices.value = response.data.data;
     } else {
@@ -121,6 +69,7 @@ const fetchServices = async () => {
   }
 }
 
+// La lógica sigue procesando los servicios cercanos en background
 const nearbyServices = computed(() => {
   if (!userCoords.value || !Array.isArray(allServices.value)) return []
   
@@ -128,7 +77,6 @@ const nearbyServices = computed(() => {
     .filter(s => s.modality === 'onsite' && s.latitude && s.longitude)
     .map(s => ({
       ...s,
-      // PARCHE ANTIGUO HTTP: Forzamos HTTPS en la URL de la imagen si viene de la base de datos como HTTP
       image_url: s.image_url ? s.image_url.replace('http://', 'https://') : null,
       distance: calculateDistance(
         userCoords.value.latitude, 
@@ -144,6 +92,7 @@ const nearbyServices = computed(() => {
 onMounted(() => {
   fetchServices()
   
+  // El GPS sigue pidiendo permiso y guardando la ubicación
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
@@ -151,10 +100,10 @@ onMounted(() => {
           latitude: pos.coords.latitude,
           longitude: pos.coords.longitude
         }
-        locationStatus.value = 'Ubicación optimizada: Mostrando resultados locales'
+        locationStatus.value = 'Ubicación optimizada'
       },
       () => {
-        locationStatus.value = 'GPS no disponible: Mostrando catálogo general'
+        locationStatus.value = 'GPS no disponible'
       }
     )
   }
